@@ -101,7 +101,7 @@ PROMPTS = {
 
 `t1_one` / `t1_two` are the smoke-test pair: same lock and scene; one metaphor vs two. Factory rule is still **one** metaphor per plate (`t1_one`). `t1_two` is only for comparing bleed.
 
-Allowed metaphors (one per plate):
+Metaphor examples (one per plate; any material metaphor is fine):
 
 - spiderweb of black cells
 - wet silk into teal glass
@@ -110,8 +110,6 @@ Allowed metaphors (one per plate):
 - liquid silver
 - fire-silk
 - enamel
-
-Do not insert the word `cloisonné` in factory prompts.
 
 Never send caption text, speech balloons, or “comic panel with text box” to Comfy. That phrase wrecks the style.
 
@@ -284,8 +282,8 @@ Two big textareas.
 Also:
 
 - Book title
-- Parse button → preview table: slug, characters used, two-shot warning, assembled prompt preview (truncated)
-- Generate missing / Generate all / Generate selected
+- Parse button → preview table: header checkbox (select all / none), slug, characters used, two-shot warning, assembled prompt preview (truncated)
+- Generate missing / Generate all / Generate selected (checked rows)
 - Checkbox: skip plates that already have a done run
 
 ### 6.4 Queue / Letter
@@ -340,11 +338,13 @@ Rules:
 - Slugs in captions that are missing from prompts: warn, do not crash.
 - Slugs in prompts with empty caption: allowed (lettering skips).
 
-The app **assembles** the Comfy positive prompt:
+The app **assembles** the Comfy positive prompt as separate sentences:
 
 ```text
-STYLE + " " + lock_1 + optional(", " + lock_2) + ", " + scene_text + TAIL
+STYLE. layout line. lock. scene. TAIL
 ```
+
+Lock comes before the camera so a portrait sentence does not outvote the action. Two-pane: lock then camera in each pane.
 
 If `helmet_on` is false (future checkbox), the assembler may swap in a user-supplied “helmet off” lock. V2 can ship helmet-on only if that keeps scope small; add a per-plate checkbox if cheap.
 
@@ -433,9 +433,8 @@ Rules:
 
 - Do not write style, sampler, LoRA, or negative prompts. The app prepends those.
 - Each plate starts with a slug on its own line, like p1_cargo
-- After the slug, write 1–3 sentences of SCENE plus exactly ONE material metaphor.
-- Allowed metaphors (pick one per plate): spiderweb of black cells; wet silk into teal glass; stained glass; gold leaf over black glass; liquid silver; fire-silk; enamel.
-- Do not write the word cloisonné.
+- After the slug, write 1–3 sentences of SCENE plus exactly ONE material metaphor. Any metaphor is fine.
+- Metaphor examples: spiderweb of black cells; wet silk into teal glass; stained glass; gold leaf over black glass; liquid silver; fire-silk; enamel.
 - Do not ask for text, logos, captions, speech balloons, or comic-page layout in the picture.
 - Refer to characters only by the lock names the user provides, e.g. ANDROID or {ANDROID}.
 - Default to one character per plate. Use two names only when both bodies must appear.

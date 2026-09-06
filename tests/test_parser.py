@@ -155,6 +155,18 @@ p1_cargo
     assert any("aethernouveau" in w for w in p.warnings)
 
 
+def test_any_metaphor_is_kept():
+    wall = """
+p1_crate
+braced in a narrow hold, the crate seams like rusted bronze
+"""
+    r = parse_book(wall, "", CAST)
+    p = r.plates[0]
+    assert "rusted bronze" in p.scene_text
+    assert "rusted bronze" in p.assembled
+    assert not any("banned" in w.lower() for w in p.warnings)
+
+
 def test_t1_smoke_pair():
     wall = """
 t1_one
@@ -202,7 +214,7 @@ def test_assemble_shape():
     assert ANDROID in text
     assert ", braced in a hold" in text or "braced in a hold" in text
     assert "No logos." in text
-    assert text.find("braced in a hold") < text.find(ANDROID.split(",")[0])
+    assert text.find(ANDROID) < text.find("braced in a hold")
 
 
 def test_picture_slots_one_body():
@@ -240,7 +252,7 @@ def test_assemble_pair_two_prompts():
     assert "Use image2 as reference" in text
     assert "never a second panel" not in text
     assert text.find("cargo bay") < text.find("mist")
-    assert text.find("cargo bay") < text.find(ANDROID.split(",")[0])
+    assert text.find(ANDROID) < text.find("cargo bay")
     assert "two different scenes" in text
 
 
@@ -327,6 +339,30 @@ She walks to the mantel and turns the clock, stained glass
     assert "Left pane:" not in r.plates[1].assembled
     assert "two equal vertical panes" not in r.plates[1].assembled
     assert "mantel" in r.plates[1].assembled
+
+
+def test_assemble_clauses_are_sentences():
+    text = assemble(STYLE, [ANDROID], "standing amidst the wreckage", TAIL)
+    assert "no second panel. " in text
+    assert "no second panel standing" not in text
+    assert ". standing amidst" in text
+
+
+def test_assemble_lock_before_scene():
+    text = assemble(STYLE, [ANDROID], "hauling the wreck, liquid silver", TAIL)
+    assert text.find(STYLE[:20]) < text.find(ANDROID)
+    assert text.find(ANDROID) < text.find("hauling the wreck")
+    pair = assemble_pair(
+        STYLE,
+        [ANDROID],
+        "hauling the wreck",
+        [AUGUR],
+        "in the cockpit",
+        TAIL,
+    )
+    assert pair.find(ANDROID) < pair.find("hauling the wreck")
+    assert pair.find("hauling the wreck") < pair.find(AUGUR)
+    assert pair.find(AUGUR) < pair.find("in the cockpit")
 
 
 def test_inline_panes_locks_per_side():

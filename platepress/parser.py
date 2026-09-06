@@ -269,6 +269,17 @@ def _close(text: str, tail: str) -> str:
     return text
 
 
+def _clause(s: str) -> str:
+    s = (s or "").strip()
+    if not s:
+        return ""
+    return s.rstrip(".,; ") + "."
+
+
+def _join_clauses(*parts: str) -> str:
+    return " ".join(_clause(p) for p in parts if p and str(p).strip())
+
+
 def assemble(
     style: str,
     locks: list[str],
@@ -282,16 +293,16 @@ def assemble(
     """One undivided plate. Two-pane pairs use assemble_pair()."""
     style = style.strip()
     scene = _spacecraft(scene.strip().rstrip(".,; "))
-    lt = (layout_text or LAYOUT_ONE).strip().rstrip(".,; ")
+    lt = (layout_text or LAYOUT_ONE).strip()
     bits: list[str] = [style]
     if lt and (layout or "one") != "split":
         bits.append(lt)
     if n_pictures and cutout:
         bits.append(REF_CUTOUT)
-    if scene:
-        bits.append(scene)
     if locks:
         bits.append(", ".join(locks))
+    if scene:
+        bits.append(scene)
     if n_pictures <= 1 and n_pictures:
         bits.append(
             _ref_hint(1, cutout)
@@ -304,7 +315,7 @@ def assemble(
             + f" Draw exactly {n_pictures} people in one undivided scene, "
             "one per picture, no extra copies, no second panel."
         )
-    return _close(" ".join(bits), tail)
+    return _close(_join_clauses(*bits), tail)
 
 
 def extract_inline_panes(scene: str) -> tuple[str, str] | None:
@@ -321,12 +332,8 @@ def extract_inline_panes(scene: str) -> tuple[str, str] | None:
 def _pane_block(label: str, scene: str, locks: list[str], ref_n: int, cutout: bool) -> str:
     scene = _spacecraft(scene.strip().rstrip(".,; "))
     lock = ", ".join(x for x in locks if x)
-    parts = [f"{label}: {scene}"]
-    if lock:
-        parts.append(lock)
-    if ref_n:
-        parts.append(_ref_hint(ref_n, cutout))
-    return " ".join(parts)
+    inner = _join_clauses(lock, scene, _ref_hint(ref_n, cutout) if ref_n else "")
+    return f"{label}: {inner}" if inner else f"{label}:"
 
 
 def assemble_pair(
@@ -341,9 +348,9 @@ def assemble_pair(
     n_right_refs: int = 0,
     cutout: bool = False,
 ) -> str:
-    """Two different scenes: left pane, right pane. Scene first so they do not twin."""
+    """Two different scenes: left pane, right pane. Lock then camera in each pane."""
     style = style.strip()
-    lt = (layout_text or LAYOUT_SPLIT).strip().rstrip(".,; ")
+    lt = (layout_text or LAYOUT_SPLIT).strip()
     bits: list[str] = [style]
     if lt:
         bits.append(lt)
@@ -356,7 +363,7 @@ def assemble_pair(
         "The left pane and the right pane are two different scenes, two different poses. "
         "Do not mirror. Do not copy the left place or action into the right pane."
     )
-    return _close(" ".join(bits), tail)
+    return _close(_join_clauses(*bits), tail)
 
 
 def apply_split_pairs(
@@ -484,8 +491,6 @@ def parse_book(
         risky = len(hits) >= 2
         if risky:
             pw.append(f"{slug}: two-shot — faces fuse")
-        if "cloisonné" in scene.lower() or "cloisonne" in scene.lower():
-            pw.append(f"{slug}: cloisonné is banned in factory prompts")
         metaphor = detect_metaphor(scene)
         caption = caption_for(slug, caps)
         locks = [by_name[n].lock_text for n in hits if n in by_name]

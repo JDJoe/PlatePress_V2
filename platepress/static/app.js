@@ -309,11 +309,31 @@ function renderPreview(plates, warnings, checkedSlugs) {
     `;
     tb.appendChild(tr);
   });
+  slugBoxes().forEach((el) => el.addEventListener("change", syncSlugAll));
+  syncSlugAll();
   if (warnings && warnings.length) showBanner(warnings.join(" · "), "warn");
 }
 
+function slugBoxes() {
+  return [...document.querySelectorAll("#preview input[data-slug]")];
+}
+
 function selectedSlugs() {
-  return [...document.querySelectorAll("#preview input[data-slug]:checked")].map((el) => el.dataset.slug);
+  return slugBoxes().filter((el) => el.checked).map((el) => el.dataset.slug);
+}
+
+function syncSlugAll() {
+  const head = $("slug-all");
+  if (!head) return;
+  const boxes = slugBoxes();
+  const n = boxes.filter((el) => el.checked).length;
+  head.indeterminate = n > 0 && n < boxes.length;
+  head.checked = boxes.length > 0 && n === boxes.length;
+}
+
+function setAllSlugs(on) {
+  slugBoxes().forEach((el) => { el.checked = on; });
+  syncSlugAll();
 }
 
 async function saveBookSilent() {
@@ -676,6 +696,7 @@ $("copy-llm").onclick = async () => {
 $("gen-missing").onclick = () => generate("missing");
 $("gen-all").onclick = () => generate("all");
 $("gen-sel").onclick = () => generate("sel");
+$("slug-all").addEventListener("change", () => setAllSlugs($("slug-all").checked));
 $("letter-all").onclick = async () => {
   showBanner("lettering all…", "ok");
   try {

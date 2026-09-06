@@ -75,13 +75,15 @@ the crate seams gleaming like liquid silver
 
 Captions use the same slugs and keep newlines. Caption is the moral; prompt is the camera. Do not paste captions into the prompt wall. Do not paste STYLE, TAIL, sampler, or `aethernouveau`.
 
-**Parse** before you generate. **Generate selected** always queues a **new version**, even if this book already has plates. It Parses first. **Generate missing** honors skip. **Generate all** does every plate. Default: 2 seeds per plate (`batch_size = 1` in the graph).
+**Parse** before you generate. The table header checkbox selects or clears every slug. **Generate selected** uses the checked rows and always queues a **new version**, even if this book already has plates. It Parses first. **Generate missing** honors skip. **Generate all** does every plate. Default: 2 seeds per plate (`batch_size = 1` in the graph).
 
-Two-pane: one checked row uses the next slug as the right pane.
+The app assembles each plate as **ink (STYLE), layout line, cast lock, your slug, TAIL**. Each chunk is its own sentence. Lock comes before the camera so the face does not outvote the action.
+
+Two-pane: one checked row uses the next slug as the right pane. Lock then camera in each pane.
 
 **Copy instructions for your LLM** copies the shipped sheet plus this book’s locks.
 
-Allowed metaphors: spiderweb of black cells; wet silk into teal glass; stained glass; gold leaf over black glass; liquid silver; fire-silk; enamel. Do not write cloisonné. Vessels are **spacecraft** — `ship` makes Krea paint boats.
+Metaphor examples: spiderweb of black cells; wet silk into teal glass; stained glass; gold leaf over black glass; liquid silver; fire-silk; enamel. Any material metaphor is fine. Vessels are **spacecraft** — `ship` makes Krea paint boats.
 
 ## Queue / Letter
 

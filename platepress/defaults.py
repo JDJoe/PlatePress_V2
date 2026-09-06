@@ -106,6 +106,7 @@ SAMPLER = {
     "scheduler": "beta",
 }
 
+# Examples for the Book preview column. Any metaphor in the wall is sent as written.
 METAPHORS = (
     "spiderweb of black cells",
     "wet silk into teal glass",

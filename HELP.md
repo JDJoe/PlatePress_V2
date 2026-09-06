@@ -54,12 +54,14 @@ the crate seams gleaming like liquid silver
 - Captions: same slugs, keep newlines, in the **Captions** box. Caption is the moral. Prompt is the camera. Narrator lines in the prompt wall go to the sampler.
 - The default book is the demo. It cannot be deleted from the UI.
 - **Parse** before generate. Check the two-shot column.
-- **Generate selected** always queues a new version, even if images already exist. It Parses first. Skip only applies to Generate missing.
-- Two-pane comic: one checked row uses the next slug as the right pane.
+- The table header checkbox selects or clears every slug.
+- **Generate selected** uses the checked rows and always queues a new version, even if images already exist. It Parses first. Skip only applies to Generate missing.
+- Assembler order: ink (STYLE), layout line, cast lock, your slug, TAIL. Each chunk is its own sentence. Lock before the camera so the face does not outvote the action.
+- Two-pane comic: one checked row uses the next slug as the right pane. Lock then camera in each pane.
 - Default: 2 random seeds per plate.
 - **Copy instructions for your LLM** copies the sheet plus current locks.
 
-Allowed metaphors: spiderweb of black cells; wet silk into teal glass; stained glass; gold leaf over black glass; liquid silver; fire-silk; enamel. Do not write cloisonné.
+Metaphor examples: spiderweb of black cells; wet silk into teal glass; stained glass; gold leaf over black glass; liquid silver; fire-silk; enamel. Any material metaphor is fine.
 
 ## Refs
 

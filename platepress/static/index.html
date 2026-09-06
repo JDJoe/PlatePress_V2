@@ -131,7 +131,7 @@
       <table>
         <thead>
           <tr>
-            <th></th><th>slug</th><th>cast</th><th>metaphor</th><th>warn</th><th>prompt</th>
+            <th><input type="checkbox" id="slug-all" title="Select all slugs" checked /></th><th>slug</th><th>cast</th><th>metaphor</th><th>warn</th><th>prompt</th>
           </tr>
         </thead>
         <tbody id="preview"></tbody>
@@ -199,12 +199,14 @@ the crate seams gleaming like liquid silver</pre>
         <li>Captions: same slugs, keep newlines, in the <strong>Captions</strong> box. Caption is the moral. Prompt is the camera.</li>
         <li>The default book is the demo. It cannot be deleted from the UI.</li>
         <li><strong>Parse</strong> before generate. Check the two-shot column.</li>
-        <li><strong>Generate selected</strong> always queues a new version, even if images already exist. It Parses first. Skip only applies to Generate missing.</li>
-        <li>Two-pane comic: one checked row uses the next slug as the right pane.</li>
+        <li>The table header checkbox selects or clears every slug.</li>
+        <li><strong>Generate selected</strong> uses the checked rows and always queues a new version, even if images already exist. It Parses first. Skip only applies to Generate missing.</li>
+        <li>Assembler order: ink (STYLE), layout line, cast lock, your slug, TAIL. Each chunk is its own sentence. Lock before the camera so the face does not outvote the action.</li>
+        <li>Two-pane comic: one checked row uses the next slug as the right pane. Lock then camera in each pane.</li>
         <li>Default: 2 random seeds per plate.</li>
         <li><strong>Copy instructions for your LLM</strong> copies the sheet plus current locks.</li>
       </ul>
-      <p>Allowed metaphors: spiderweb of black cells; wet silk into teal glass; stained glass; gold leaf over black glass; liquid silver; fire-silk; enamel. Do not write cloisonné.</p>
+      <p>Metaphor examples: spiderweb of black cells; wet silk into teal glass; stained glass; gold leaf over black glass; liquid silver; fire-silk; enamel. Any material metaphor is fine.</p>
 
       <h3>Refs</h3>
       <ul>
@@ -234,6 +236,6 @@ the crate seams gleaming like liquid silver</pre>
       </ul>
     </section>
   </main>
-  <script src="/static/app.js?v=30"></script>
+  <script src="/static/app.js?v=31"></script>
 </body>
 </html>
