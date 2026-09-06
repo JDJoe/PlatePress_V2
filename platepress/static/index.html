@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Plate Press</title>
+  <link rel="stylesheet" href="/static/style.css?v=17" />
+</head>
+<body>
+  <header>
+    <h1>Plate Press</h1>
+    <p>local ComfyUI picture-novel press</p>
+    <p class="tiny" id="current-book"></p>
+  </header>
+  <div id="banner"></div>
+  <nav>
+    <button data-view="settings" class="on">Settings</button>
+    <button data-view="cast">Cast</button>
+    <button data-view="book">Book</button>
+    <button data-view="queue">Queue / Letter</button>
+    <button data-view="help">Help</button>
+  </nav>
+  <main>
+    <section id="view-settings" class="view on">
+      <h2 data-book-heading="Open book"></h2>
+      <p class="tiny">Ink, layout, and LoRA are shared. Cast, story, and plates belong to the open book below.</p>
+      <h3>Style examples</h3>
+      <p class="tiny">The card is the mode. Bos: one image per slug (a slug may still split if it contains left pane / right pane). Two-pane comic: consecutive slugs share one image. Click fills ink, closer, and negatives. The boxes stay editable.</p>
+      <div id="examples" class="examples"></div>
+      <input type="hidden" id="layout" />
+
+      <label>Ink (STYLE)</label>
+      <textarea id="style"></textarea>
+      <label>Layout line</label>
+      <textarea id="layout_text" style="min-height:4rem"></textarea>
+
+      <label>World closer (TAIL)</label>
+      <textarea id="tail" style="min-height:4rem"></textarea>
+      <label>NEG</label>
+      <textarea id="neg"></textarea>
+
+      <label class="tiny"><input type="checkbox" id="send_refs" /> Send character stills to Comfy (off = text locks only)</label>
+      <label class="tiny"><input type="checkbox" id="ref_cutout" /> Stills are cutouts (optional). Tells Comfy the background is already removed so it should not steal the room from the photo.</label>
+      <p class="tiny">On: first still on the plate → <code>image1</code>, second → <code>image2</code>. The prompt says <code>use imageN as reference</code>.</p>
+
+      <label>Assembled recipe (preview)</label>
+      <div id="assemble-preview" class="assemble-preview"></div>
+
+      <button class="act" id="save-settings">Save settings</button>
+      <button class="act ghost" id="test-comfy">Test connection</button>
+
+      <details>
+        <summary>Connection and sampler</summary>
+        <div class="row">
+          <div>
+            <label>Comfy host</label>
+            <input id="host" type="text" />
+          </div>
+          <div>
+            <label>Comfy port</label>
+            <input id="port" type="number" />
+          </div>
+        </div>
+        <label>Text workflow JSON</label>
+        <input id="workflow_text" type="text" />
+        <label>Ref workflow JSON</label>
+        <input id="workflow_ref" type="text" />
+        <div class="row">
+          <div>
+            <label>LoRA filename (swap this; not the product)</label>
+            <input id="lora_name" type="text" />
+          </div>
+          <div>
+            <label>LoRA strength</label>
+            <input id="lora_strength" type="number" step="0.05" />
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Images per plate</label>
+            <input id="images_per_plate" type="number" min="1" max="8" />
+          </div>
+          <div>
+            <label>Output root</label>
+            <input id="output_root" type="text" />
+          </div>
+        </div>
+        <div class="row">
+          <div><label>steps</label><input id="steps" type="number" /></div>
+          <div><label>CFG</label><input id="cfg" type="number" step="0.1" /></div>
+          <div><label>sampler</label><input id="sampler_name" type="text" /></div>
+          <div><label>scheduler</label><input id="scheduler" type="text" /></div>
+        </div>
+      </details>
+
+      <h3 style="margin-top:1.4rem">Books</h3>
+      <p class="tiny">Each book is a folder. The open one is marked. Delete removes the folder (plates, stills, story, cast).</p>
+      <div id="books"></div>
+      <button type="button" class="act ghost js-new-book">New book</button>
+    </section>
+
+    <section id="view-cast" class="view">
+      <h2 data-book-heading="Cast"></h2>
+      <p class="tiny">This roster belongs only to the open book. ANDROID here is not ANDROID in another book. Load demo cast replaces <em>this</em> book’s characters, not a global list.</p>
+      <button class="act" id="demo-cast">Load demo cast</button>
+      <div id="cast"></div>
+      <button class="act ghost" id="add-char">Add character</button>
+    </section>
+
+    <section id="view-book" class="view">
+      <h2 data-book-heading="Book"></h2>
+      <button type="button" class="act js-new-book">New book</button>
+      <p class="tiny">Starts a clean folder: empty story, empty cast, no plates.</p>
+      <label>Book title</label>
+      <input id="title" type="text" />
+      <p class="tiny" id="book-id"></p>
+      <p class="tiny">Slug on its own line (p1_cargo). Then place + pose + one metaphor. Put them in a world, not a studio. Do not square them to the camera. App prepends STYLE and locks. Do not paste aethernouveau into the story box.</p>
+      <label>Prompts / story</label>
+      <textarea id="prompts_raw" class="tall" placeholder="p1_cargo&#10;braced in a narrow hold, the crate seams gleaming like liquid silver"></textarea>
+      <label>Captions</label>
+      <textarea id="captions_raw" class="tall" placeholder="p1_cargo&#10;line&#10;line"></textarea>
+      <button class="act" id="save-book">Save book</button>
+      <button class="act" id="parse">Parse</button>
+      <button class="act ghost" id="demo-bos">Load Bos Sidereal demo</button>
+      <button class="act ghost" id="demo-t1">Load t1 smoke</button>
+      <button class="act ghost" id="copy-llm">Copy instructions for your LLM</button>
+      <label class="tiny"><input type="checkbox" id="skip_done" checked /> Generate missing: skip plates that already have images</label>
+      <button class="act" id="gen-missing">Generate missing</button>
+      <button class="act" id="gen-all">Generate all</button>
+      <button class="act" id="gen-sel">Generate selected</button>
+      <table>
+        <thead>
+          <tr>
+            <th></th><th>slug</th><th>cast</th><th>metaphor</th><th>warn</th><th>prompt</th>
+          </tr>
+        </thead>
+        <tbody id="preview"></tbody>
+      </table>
+    </section>
+
+    <section id="view-queue" class="view">
+      <h2 data-book-heading="Queue"></h2>
+      <p class="tiny" id="qstatus"></p>
+      <button class="act" id="letter-all">Letter all</button>
+      <button class="act ghost" id="export">Export pack</button>
+      <button class="act ghost" id="open-folder">Open folder</button>
+      <button class="act ghost" id="del-earlier">Delete earlier plates</button>
+      <button class="act ghost" id="del-all-plates">Delete all plates in this book</button>
+      <div id="thumbs"></div>
+    </section>
+
+    <section id="view-help" class="view help">
+      <h2>Help</h2>
+      <p>One book at a time. ComfyUI must already be running. This app does not download the checkpoint.</p>
+
+      <h3>Loop</h3>
+      <ol>
+        <li>Settings — pick a style card, Test connection.</li>
+        <li>Cast — this book’s people. Optional stills.</li>
+        <li>Book — paste scenes. Parse. Generate.</li>
+        <li>Queue — letter captions <em>after</em> the sampler. Never ask Comfy for text in the picture.</li>
+      </ol>
+
+      <h3>Settings</h3>
+      <ul>
+        <li>Ink, closer, NEG, LoRA, and stills-on/off are shared. Cast, story, and plates belong to the open book.</li>
+        <li><strong>Test connection</strong> first.</li>
+        <li><strong>Style cards are the mode.</strong> There is no Plate layout radio.</li>
+        <li><strong>Bos, one plate</strong>: each slug is one image. If that slug contains <code>left pane:</code> / <code>right pane:</code>, only that plate splits.</li>
+        <li><strong>Two-pane comic</strong>: consecutive slugs share one image (p1 left, p2 right). Do not write “Left pane” yourself. Each pane is its own scene as written.</li>
+        <li>Click a card to fill ink, layout line, closer, and matching negatives. The boxes stay editable.</li>
+        <li><strong>Send character stills</strong> is off unless you mean that. Off = text locks only. On: first still → <code>image1</code>, second → <code>image2</code>. Prompt says <code>use imageN as reference</code>.</li>
+        <li>LoRA filename is a setting. Change it later. It is not the product.</li>
+        <li>Do not touch sampler unless you mean it. Factory: 8 steps, CFG 1, euler, beta.</li>
+      </ul>
+
+      <h3>Cast</h3>
+      <ul>
+        <li>Cast is per book. Five books can all have ANDROID; they are not the same person.</li>
+        <li>Header plus Cast, Book, Queue, and Settings headings show the open book.</li>
+        <li>Name is the token in the story wall: <code>ANDROID</code> or <code>{ANDROID}</code>.</li>
+        <li>Lock is stuffed into every plate that names that character. A spacesuit lock will beat a gilt-chair scene.</li>
+        <li>A name like <code>PATRON</code> only works if that card exists on this book.</li>
+        <li>0–3 local stills per card. One body. Replace still on that card. Two-shots are flagged. Faces fuse.</li>
+        <li><strong>Lock seed</strong> on a thumb in Queue, then later plates of that character can reuse it.</li>
+        <li><strong>Load demo cast</strong> replaces this book’s roster, not a global list.</li>
+      </ul>
+
+      <h3>Book</h3>
+      <p>Story wall:</p>
+      <pre>p1_cargo
+ANDROID
+seen over her left shoulder, hauling a sealed ox-hide crate down a receding cargo bay,
+the crate seams gleaming like liquid silver</pre>
+      <ul>
+        <li>Slug on its own line (<code>p1_cargo</code>, <code>t1_one</code>).</li>
+        <li>Then place + pose + exactly one metaphor. Not a studio. Not square to the camera.</li>
+        <li>Do not paste STYLE, TAIL, sampler, or <code>aethernouveau</code> here. The app prepends those.</li>
+        <li>Captions: same slugs, keep newlines, in the <strong>Captions</strong> box. Caption is the moral. Prompt is the camera.</li>
+        <li>The default book is the demo. It cannot be deleted from the UI.</li>
+        <li><strong>Parse</strong> before generate. Check the two-shot column.</li>
+        <li><strong>Generate selected</strong> always queues a new version, even if images already exist. It Parses first. Skip only applies to Generate missing.</li>
+        <li>Two-pane comic: one checked row uses the next slug as the right pane.</li>
+        <li>Default: 2 random seeds per plate.</li>
+        <li><strong>Copy instructions for your LLM</strong> copies the sheet plus current locks.</li>
+      </ul>
+      <p>Allowed metaphors: spiderweb of black cells; wet silk into teal glass; stained glass; gold leaf over black glass; liquid silver; fire-silk; enamel. Do not write cloisonné.</p>
+
+      <h3>Refs</h3>
+      <ul>
+        <li>Off unless <strong>Send character stills</strong> is checked.</li>
+        <li>Optional: <strong>Stills are cutouts</strong> — tells Comfy the background is already gone.</li>
+        <li>One still per character named on that plate. Do not add a second ANDROID.</li>
+      </ul>
+
+      <h3>Queue / Letter</h3>
+      <ul>
+        <li>This page shows only the open book.</li>
+        <li>File names: <code>{book_id}_v01_p001_slug.png</code>; two-pane pair <code>{book_id}_v01_p001_slug_p002_other.png</code>; second seed <code>…_2.png</code>. Each Generate is a new version, newest grid on top. p010 after p001. No seed in the name.</li>
+        <li>Thumbs land in the book <code>plates/</code> folder.</li>
+        <li><strong>Letter all</strong> / <strong>Letter this</strong> attaches a cream bar under the plate. Width unchanged. Height grows. Empty captions skip. Pair files use both captions.</li>
+        <li><strong>Export pack</strong> writes lettered PNGs, <code>captions/</code>, <code>assembled_prompts.txt</code>, <code>seeds.json</code>.</li>
+        <li>Reroll = new seed from the current Book wall (saves first), not the old file. New version.</li>
+        <li>Delete one file, earlier versions, or all plates in this book (story/stills stay).</li>
+      </ul>
+
+      <h3>House style</h3>
+      <ul>
+        <li>No text, logos, balloons, or “comic panel with text box” in the sampler.</li>
+        <li>No NASA, EMU, flags, patches — those pull a different suit.</li>
+        <li>One character per plate unless both bodies must appear.</li>
+        <li>Do not change identity words mid-book.</li>
+        <li>Vessels are spacecraft. The word ship (and spaceship) makes Krea paint boats with sails.</li>
+      </ul>
+    </section>
+  </main>
+  <script src="/static/app.js?v=30"></script>
+</body>
+</html>

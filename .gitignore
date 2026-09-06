@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+platepress/settings.json
+platepress/books/
+SS_*
+PP_untitled*
+/female_android*.png
+/male_cosmon.png
+/captions/
+sweep_05.py
+*.orig
+.DS_Store

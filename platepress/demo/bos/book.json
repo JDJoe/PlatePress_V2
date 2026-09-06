@@ -1,0 +1,35 @@
+{
+  "id": "default",
+  "title": "Bos Sidereal",
+  "style": null,
+  "tail": null,
+  "workflow": null,
+  "characters": [
+    {
+      "id": "android",
+      "name": "ANDROID",
+      "lock_text": "A slim beautiful bald female android with blue eyes, in an opaque sleek spacesuit and brown gloves, complete coverage, bubble helmet",
+      "ref_images": [
+        "refs/ANDROID/android.png"
+      ],
+      "ref_active": "refs/ANDROID/android.png",
+      "locked_seed": null,
+      "notes": ""
+    },
+    {
+      "id": "augur",
+      "name": "AUGUR",
+      "lock_text": "A lean older man with grey cropped hair and a short neat beard, in a worn ochre-pale spacesuit and dark gloves, complete coverage, bubble helmet",
+      "ref_images": [
+        "refs/AUGUR/augur.png"
+      ],
+      "ref_active": "refs/AUGUR/augur.png",
+      "locked_seed": null,
+      "notes": ""
+    }
+  ],
+  "plates": [],
+  "prompts_raw": "p1_cargo\nANDROID\nseen over her left shoulder, three-quarter from behind, hauling a sealed ox-hide crate along a receding cargo bay of ribbed bulkheads and stacked drums, helmet turned to the crate not the aisle, a slit of rust light at the far hatch, pale straps biting the ox-hide, the crate seams gleaming like liquid silver\n\np2_claim\nANDROID\ntumbling away from the bay toward a round open hatch, body in profile, one brown glove raised in refusal at the threshold, facing colossal faceless figures waiting in the mist, spacecraft ribs and dangling straps still in the foreground, their cloaks peeling like gold leaf over black glass\n\np3_years\nANDROID\nfalling past a canyon of torn hours, the crown of the bubble helmet nearest, face toward the crate hugged to her chest, knees drawn, a rust landscape breaking into strips above and below, the years tearing around her like wet silk into teal glass\n\np4_augur\nAUGUR\narriving in profile on a rust-red basin under a low ochre sky, one boot still inside a circular wound hanging over cracked salt pans and distant mesas, bronze knife held flat, helmet turned to the plain not the wound, the wound in the air a spiderweb of black cells\n\np5_embargo\nANDROID\nsmall on a rust slope, body twisted away, one glove shielding the helmet visor as she looks up-slope at a fleet of needle-hull spacecraft hanging in the ochre sky, dunes and wreck ribs running to the horizon, their hulls a stained-glass lattice of black cells\n\np6_ambrosia\nANDROID AUGUR\nin profile in a rust hollow at dusk, crouched opposite over the opened ox-hide crate between dune shadows and a dead landing strut, faces toward the meat and the dusk, a dark cut of Earth beef on the bronze knife, the fat catching the last light like old enamel\n\np7_battle\nANDROID\nfrom behind, punching through a collapsing enemy corridor that recedes in torn frames, one boot on buckled plating, helmet aimed at the breach not back down the hall, sparks and debris filling the depth, the hull bursting into teal stained glass around her glove\n\np8_hold\nANDROID AUGUR\nside-on at a vertical crack of hours splitting a rust cliff, she hauling one luminous edge shut with both brown gloves, he in profile shouldering the crate through the gap toward a pale terrace beyond, the crack splitting as luminous stained glass\n\np9_altar\nANDROID\nwalking away down a long stone terrace between worn columns, crate already set on a low altar at the far end, too many pale suns stacked over a drop into ochre haze, her helmet toward the altar, the altar cloth a cloak of fire-silk laid flat\n\np10_enough\nANDROID AUGUR\non the terrace steps after the meal, both turned toward the drop and the stacked suns, empty crate between them, bronze knife across her knees, columns receding, a last scrap of gold leaf peeling off the sky\n",
+  "captions_raw": "p1_cargo\nShe had been designed for beauty, order, and purpose.\nThe crate did not care.\n\np2_claim\nYou owe me, said Necessity.\nShe declined to discuss the matter with a creature made of noodles.\n\np3_years\nThe years tore. She held the ox-hide.\nNothing in the contract mentioned this.\n\np4_augur\nAn older man stepped out of a wound in the air.\nHe had brought a knife. He had not brought an apology.\n\np5_embargo\nA pale fleet hung over the rust.\nSomeone had decided she was contraband.\n\np6_ambrosia\nEarth beef. Bronze knife. Two helmets.\nThis was the whole argument.\n\np7_battle\nShe punched a navy.\nThe navy noticed too late.\n\np8_hold\nHours cracked open.\nThey shoved the crate through and pulled the world shut.\n\np9_altar\nToo many suns. One altar.\nShe put the crate down as if it were a child.\n\np10_enough\nThe crate was empty.\nThat, it turned out, was the point.\n",
+  "runs": []
+}

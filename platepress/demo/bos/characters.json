@@ -1,0 +1,24 @@
+[
+  {
+    "id": "android",
+    "name": "ANDROID",
+    "lock_text": "A slim beautiful bald female android with blue eyes, in an opaque sleek spacesuit and brown gloves, complete coverage, bubble helmet",
+    "ref_images": [
+      "refs/ANDROID/android.png"
+    ],
+    "ref_active": "refs/ANDROID/android.png",
+    "locked_seed": null,
+    "notes": ""
+  },
+  {
+    "id": "augur",
+    "name": "AUGUR",
+    "lock_text": "A lean older man with grey cropped hair and a short neat beard, in a worn ochre-pale spacesuit and dark gloves, complete coverage, bubble helmet",
+    "ref_images": [
+      "refs/AUGUR/augur.png"
+    ],
+    "ref_active": "refs/AUGUR/augur.png",
+    "locked_seed": null,
+    "notes": ""
+  }
+]
