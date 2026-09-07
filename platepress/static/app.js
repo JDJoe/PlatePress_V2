@@ -49,11 +49,94 @@ document.querySelectorAll("nav button").forEach((b) => {
 });
 
 const SET_KEYS = [
-  "host", "port", "workflow_text", "workflow_ref", "lora_name", "lora_strength",
+  "host", "port", "workflow_text", "workflow_ref",
+  "models_dir", "loras_dir", "unet_name",
   "style", "layout", "layout_text", "tail", "neg", "ref_cutout_text",
   "images_per_plate", "output_root",
   "steps", "cfg", "sampler_name", "scheduler",
 ];
+const LORA_SLOTS = 4;
+let weightLists = { models: [], loras: [] };
+
+function krea2Name(name) {
+  return /krea2/i.test(name || "");
+}
+
+function updateUnetWarn() {
+  const el = $("unet-warn");
+  if (!el) return;
+  const name = ($("unet_name") && $("unet_name").value) || "";
+  el.classList.toggle("off", !name || krea2Name(name));
+}
+
+function fillDatalist(id, names, extra) {
+  const dl = $(id);
+  if (!dl) return;
+  const seen = new Set();
+  dl.innerHTML = "";
+  [extra, ...(names || [])].forEach((n) => {
+    if (!n || seen.has(n)) return;
+    seen.add(n);
+    const o = document.createElement("option");
+    o.value = n;
+    dl.appendChild(o);
+  });
+}
+
+function readLoras() {
+  const box = $("lora-stack");
+  if (!box) return [];
+  const out = [];
+  box.querySelectorAll(".lora-row").forEach((row) => {
+    const name = String((row.querySelector(".lora-name") || {}).value || "").trim();
+    if (!name) return;
+    const strength = Number((row.querySelector(".lora-strength") || {}).value);
+    out.push({ name, strength: Number.isFinite(strength) ? strength : 0.8 });
+  });
+  return out.slice(0, LORA_SLOTS);
+}
+
+function renderLoras(slots) {
+  const box = $("lora-stack");
+  if (!box) return;
+  const list = (slots && slots.length) ? slots.slice(0, LORA_SLOTS) : [{ name: "", strength: 0.8 }];
+  box.innerHTML = "";
+  list.forEach((slot, i) => {
+    const row = document.createElement("div");
+    row.className = "lora-row";
+    row.innerHTML = `
+      <div class="row">
+        <div>
+          <label>LoRA ${i + 1}</label>
+          <input class="lora-name" type="text" list="lora-list" />
+        </div>
+        <div style="max-width:7rem">
+          <label>strength</label>
+          <input class="lora-strength" type="number" step="0.05" />
+        </div>
+        <div style="max-width:5.5rem">
+          <label>&nbsp;</label>
+          <button type="button" class="act ghost lora-remove">Remove</button>
+        </div>
+      </div>`;
+    row.querySelector(".lora-name").value = slot.name || "";
+    row.querySelector(".lora-strength").value = slot.strength ?? 0.8;
+    row.querySelector(".lora-remove").onclick = () => {
+      const next = [...box.querySelectorAll(".lora-row")]
+        .map((r, j) => ({
+          name: String((r.querySelector(".lora-name") || {}).value || "").trim(),
+          strength: Number((r.querySelector(".lora-strength") || {}).value) || 0.8,
+          drop: j === i,
+        }))
+        .filter((x) => !x.drop)
+        .map(({ name, strength }) => ({ name, strength }));
+      renderLoras(next);
+    };
+    box.appendChild(row);
+  });
+  const add = $("add-lora");
+  if (add) add.disabled = list.length >= LORA_SLOTS;
+}
 
 function layoutValue() {
   return ($("layout") && $("layout").value) || (settings.layout) || "one";
@@ -125,6 +208,10 @@ function fillSettings(s) {
   const rc = $("ref_cutout");
   if (rc) rc.checked = !!s.ref_cutout;
   if ($("layout")) $("layout").value = s.layout || "one";
+  renderLoras(s.loras);
+  fillDatalist("unet-list", weightLists.models, s.unet_name);
+  fillDatalist("lora-list", weightLists.loras, (s.loras && s.loras[0] && s.loras[0].name) || s.lora_name);
+  updateUnetWarn();
   renderExamples(s.examples);
   updateAssemblePreview();
 }
@@ -141,6 +228,7 @@ function readSettings() {
   if (sr) body.send_refs = sr.checked;
   const rc = $("ref_cutout");
   if (rc) body.ref_cutout = rc.checked;
+  body.loras = readLoras();
   return body;
 }
 
@@ -660,6 +748,49 @@ if ($("send_refs")) {
       showBanner(e.message, "err");
     }
   });
+}
+if ($("unet_name")) {
+  $("unet_name").addEventListener("input", updateUnetWarn);
+  $("unet_name").addEventListener("change", updateUnetWarn);
+}
+if ($("add-lora")) {
+  $("add-lora").onclick = () => {
+    const box = $("lora-stack");
+    const rows = box ? [...box.querySelectorAll(".lora-row")] : [];
+    if (rows.length >= LORA_SLOTS) return;
+    const cur = rows.map((row) => ({
+      name: String((row.querySelector(".lora-name") || {}).value || "").trim(),
+      strength: Number((row.querySelector(".lora-strength") || {}).value) || 0.8,
+    }));
+    cur.push({ name: "", strength: 0.8 });
+    renderLoras(cur);
+  };
+}
+if ($("scan-weights")) {
+  $("scan-weights").onclick = async () => {
+    try {
+      const r = await j("/api/weights", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          models_dir: ($("models_dir") && $("models_dir").value) || "",
+          loras_dir: ($("loras_dir") && $("loras_dir").value) || "",
+        }),
+      });
+      weightLists.models = r.models || [];
+      weightLists.loras = r.loras || [];
+      fillDatalist("unet-list", weightLists.models, $("unet_name") && $("unet_name").value);
+      fillDatalist("lora-list", weightLists.loras);
+      const bits = [];
+      if (weightLists.models.length) bits.push(weightLists.models.length + " models");
+      if (weightLists.loras.length) bits.push(weightLists.loras.length + " LoRAs");
+      const err = (r.errors || []).join("; ");
+      if (err && !bits.length) showBanner(err, "err");
+      else showBanner((bits.join(", ") || "scanned") + (err ? " · " + err : ""), err && bits.length ? "warn" : "ok");
+    } catch (e) {
+      showBanner(e.message, "err");
+    }
+  };
 }
 $("save-settings").onclick = async () => {
   settings = await j("/api/settings", {

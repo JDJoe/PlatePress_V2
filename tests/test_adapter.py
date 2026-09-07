@@ -20,6 +20,7 @@ def test_detect_v3_ref_workflow():
     assert m.negative == "3"
     assert m.sampler == "8"
     assert m.lora == "7"
+    assert m.unet == "4"
     assert m.latent == "10"
     assert m.save == "14"
     assert m.ref_method is None
@@ -72,6 +73,33 @@ def test_fill_no_still_drops_all_loaders():
     assert "12" not in out
     assert "13" not in out
     assert out["3"]["inputs"]["text"] == "neg"
+
+
+def test_fill_unet_and_lora_stack():
+    wf = load_workflow(V3)
+    out = fill(
+        wf,
+        positive="hello",
+        negative="neg",
+        seed=1,
+        prefix="PP_x",
+        lora_name="ignored.safetensors",
+        lora_strength=0.1,
+        image_names=[],
+        unet_name="KREA2/krea2_turbo_bf16.safetensors",
+        loras=[
+            {"name": "style/one.safetensors", "strength": 0.8},
+            {"name": "extra/two.safetensors", "strength": 0.4},
+        ],
+    )
+    assert out["4"]["inputs"]["unet_name"] == "KREA2/krea2_turbo_bf16.safetensors"
+    assert out["7"]["inputs"]["lora_01"] == "style/one.safetensors"
+    assert out["7"]["inputs"]["strength_01"] == 0.8
+    assert out["7"]["inputs"]["lora_02"] == "extra/two.safetensors"
+    assert out["7"]["inputs"]["strength_02"] == 0.4
+    assert out["7"]["inputs"]["lora_03"] == "None"
+    assert out["7"]["inputs"]["strength_03"] == 0.0
+    assert out["7"]["inputs"]["lora_04"] == "None"
 
 
 def test_still_for_comfy_rewrites_jpeg_as_png(tmp_path):

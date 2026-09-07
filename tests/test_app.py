@@ -22,6 +22,8 @@ def test_portable_paths_are_repo_relative():
     assert "/home/" not in s["output_root"]
     assert s["ref_cutout"] is False
     assert s["tail"] == ""
+    assert "krea2" in (s.get("unet_name") or "").lower()
+    assert s["loras"] and s["loras"][0]["name"] == s["lora_name"]
     from platepress.defaults import EXAMPLES
     assert EXAMPLES["bos"]["tail"] == ""
     assert "own scene" in (EXAMPLES["split"]["tail"] or "").lower()
@@ -322,3 +324,46 @@ def test_one_ref_per_character_even_if_card_has_two(tmp_path):
     assert refs == [b]
     plate.named_ids = []
     assert _refs_for(plate, chars) == []
+
+
+def test_normalize_loras_from_legacy_fields():
+    from platepress.store import migrate_loras, normalize_loras
+
+    slots = normalize_loras({
+        "lora_name": "Krea2-aethernouveau-04/Krea2-aethernouveau-04_merged.safetensors",
+        "lora_strength": 0.8,
+    })
+    assert len(slots) == 1
+    assert slots[0]["name"].endswith("merged.safetensors")
+    s = migrate_loras({"lora_name": "a.safetensors", "lora_strength": 0.5})
+    assert s["loras"] == [{"name": "a.safetensors", "strength": 0.5}]
+    assert "krea2" in s["unet_name"].lower()
+
+
+def test_list_weights_relative_names(tmp_path):
+    from platepress.store import list_weights
+
+    (tmp_path / "KREA2").mkdir()
+    (tmp_path / "KREA2" / "krea2_turbo_bf16.safetensors").write_bytes(b"x")
+    (tmp_path / "skip.txt").write_text("no", encoding="utf-8")
+    names = list_weights(tmp_path)
+    assert names == ["KREA2/krea2_turbo_bf16.safetensors"]
+
+
+def test_scan_weights_api(tmp_path, monkeypatch):
+    from platepress import store
+
+    monkeypatch.setattr(store, "DEFAULT_SETTINGS_PATH", tmp_path / "settings.json")
+    models = tmp_path / "diffusion_models"
+    loras = tmp_path / "loras"
+    (models / "KREA2").mkdir(parents=True)
+    (models / "KREA2" / "krea2_turbo_bf16.safetensors").write_bytes(b"m")
+    (loras / "style").mkdir(parents=True)
+    (loras / "style" / "one.safetensors").write_bytes(b"l")
+    client = TestClient(app)
+    r = client.post("/api/weights", json={"models_dir": str(models), "loras_dir": str(loras)})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["models"] == ["KREA2/krea2_turbo_bf16.safetensors"]
+    assert body["loras"] == ["style/one.safetensors"]
+    assert body["errors"] == []

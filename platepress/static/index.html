@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Plate Press</title>
-  <link rel="stylesheet" href="/static/style.css?v=18" />
+  <link rel="stylesheet" href="/static/style.css?v=19" />
 </head>
 <body>
   <header>
@@ -45,6 +45,24 @@
       <textarea id="ref_cutout_text" style="min-height:4rem"></textarea>
       <p class="tiny">Cutout sentence is sent only when the box is on. Edit it here. On: first still → <code>image1</code>, second → <code>image2</code>.</p>
 
+      <h3>Model and LoRAs</h3>
+      <p class="tiny">These swap files inside the V3 graph. Do not export a new API workflow. CLIP and VAE stay as they are. The diffusion model must be <strong>Krea 2</strong>.</p>
+      <label>Diffusion models folder</label>
+      <input id="models_dir" type="text" placeholder="~/ComfyUI/models/diffusion_models" />
+      <p class="tiny">UNETLoader root. Usually <code>ComfyUI/models/diffusion_models</code> or <code>models/unet</code>. Names are relative to this folder, e.g. <code>KREA2/krea2_turbo_bf16.safetensors</code>.</p>
+      <label>LoRAs folder</label>
+      <input id="loras_dir" type="text" placeholder="~/ComfyUI/models/loras" />
+      <p class="tiny">Usually <code>ComfyUI/models/loras</code>.</p>
+      <button type="button" class="act ghost" id="scan-weights">Scan folders</button>
+      <label>Diffusion model</label>
+      <input id="unet_name" type="text" list="unet-list" />
+      <datalist id="unet-list"></datalist>
+      <p class="tiny warn-note" id="unet-warn">Must be a Krea 2 UNET (name contains krea2). Other checkpoints will fail or look wrong. This app does not download models.</p>
+      <p class="tiny">LoRAs (up to 4, rgthree stack). First slot is the style LoRA.</p>
+      <div id="lora-stack"></div>
+      <button type="button" class="act ghost" id="add-lora">Add LoRA</button>
+      <datalist id="lora-list"></datalist>
+
       <label>Assembled recipe (preview)</label>
       <div id="assemble-preview" class="assemble-preview"></div>
 
@@ -67,16 +85,6 @@
         <input id="workflow_text" type="text" />
         <label>Ref workflow JSON</label>
         <input id="workflow_ref" type="text" />
-        <div class="row">
-          <div>
-            <label>LoRA filename (swap this; not the product)</label>
-            <input id="lora_name" type="text" />
-          </div>
-          <div>
-            <label>LoRA strength</label>
-            <input id="lora_strength" type="number" step="0.05" />
-          </div>
-        </div>
         <div class="row">
           <div>
             <label>Images per plate</label>
@@ -186,7 +194,7 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
         <li><strong>Ink</strong> and <strong>Layout line</strong> are prepended to every plate. <strong>World closer</strong> only if that box has text (empty on Bos).</li>
         <li><strong>Send character stills</strong> is off unless you check it. On: named Cast token with a still → <code>image1</code>. Write <code>REFERENCE: use picture1…</code> on the wall; the app does not add that sentence. No still → no image.</li>
         <li><strong>Stills are cutouts</strong> is off unless you check it. The sentence is editable and is not auto-inserted.</li>
-        <li>LoRA filename is a setting. Change it later. It is not the product.</li>
+        <li><strong>Model and LoRAs</strong> — point at Comfy’s diffusion-models folder and loras folder, Scan, then pick. Must be a Krea 2 UNET. Up to four LoRAs. This swaps files in the V3 graph; do not export a new API workflow.</li>
         <li>Do not touch sampler unless you mean it. Factory: 8 steps, CFG 1, euler, beta.</li>
       </ul>
 
@@ -259,6 +267,6 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
       </ul>
     </section>
   </main>
-  <script src="/static/app.js?v=36"></script>
+  <script src="/static/app.js?v=37"></script>
 </body>
 </html>

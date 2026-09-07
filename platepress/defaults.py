@@ -100,8 +100,10 @@ EXAMPLES = {
     },
 }
 
+UNET = "KREA2/krea2_turbo_bf16.safetensors"
 LORA = "Krea2-aethernouveau-04/Krea2-aethernouveau-04_merged.safetensors"
 LORA_STRENGTH = 0.80
+LORA_SLOTS = 4
 PER_PROMPT = 2
 SAMPLER = {
     "steps": 8,

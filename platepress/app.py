@@ -40,9 +40,11 @@ from .store import (
     is_protected_book,
     iter_image_files,
     list_books,
+    list_weights,
     load_book,
     load_seeds,
     load_settings,
+    normalize_loras,
     new_id,
     safe_book_id,
     save_book,
@@ -287,20 +289,23 @@ def _run_job(job: dict[str, Any]) -> None:
 
     wf_path = Path(job["workflow"])
     wf = load_workflow(wf_path)
+    slots = normalize_loras(s)
     filled = fill(
         wf,
         positive=job["assembled"],
         negative=job["negative"],
         seed=int(job["seed"]),
         prefix=job["prefix"],
-        lora_name=s["lora_name"],
-        lora_strength=float(s["lora_strength"]),
+        lora_name=(slots[0]["name"] if slots else s.get("lora_name") or ""),
+        lora_strength=float(slots[0]["strength"] if slots else s.get("lora_strength") or 0),
         image_names=image_names,
         batch_size=1,
         steps=int(s.get("steps") or 8),
         cfg=float(s.get("cfg") or 1),
         sampler_name=s.get("sampler_name") or "euler",
         scheduler=s.get("scheduler") or "beta",
+        unet_name=str(s.get("unet_name") or "").strip() or None,
+        loras=slots,
     )
     prompt_id = client.queue(filled)
     job["prompt_id"] = prompt_id
@@ -397,6 +402,31 @@ def post_settings(body: dict[str, Any]) -> dict[str, Any]:
 def test_comfy() -> dict[str, Any]:
     ok, msg = _client().ping()
     return {"ok": ok, "message": msg}
+
+
+@app.post("/api/weights")
+def post_weights(body: dict[str, Any]) -> dict[str, Any]:
+    """Scan the folders you pointed at. Names are relative, as Comfy expects."""
+    models: list[str] = []
+    loras: list[str] = []
+    errors: list[str] = []
+    models_dir = str(body.get("models_dir") or "").strip()
+    loras_dir = str(body.get("loras_dir") or "").strip()
+    if models_dir:
+        try:
+            models = list_weights(models_dir)
+        except Exception as e:
+            errors.append(f"models: {e}")
+    else:
+        errors.append("set the diffusion models folder")
+    if loras_dir:
+        try:
+            loras = list_weights(loras_dir)
+        except Exception as e:
+            errors.append(f"loras: {e}")
+    else:
+        errors.append("set the LoRAs folder")
+    return {"models": models, "loras": loras, "errors": errors}
 
 
 @app.get("/api/book")

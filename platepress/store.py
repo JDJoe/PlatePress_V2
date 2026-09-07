@@ -14,11 +14,13 @@ from .defaults import (
     LAYOUT_ONE,
     LAYOUT_SPLIT,
     LORA,
+    LORA_SLOTS,
     LORA_STRENGTH,
     NEG,
     PER_PROMPT,
     REF_CUTOUT,
     STYLE,
+    UNET,
     neg_for,
 )
 
@@ -52,12 +54,75 @@ def migrate_layout(s: dict[str, Any]) -> dict[str, Any]:
         s["tail"] = CLOSER_SPLIT
     return s
 
+
+def normalize_loras(s: dict[str, Any]) -> list[dict[str, Any]]:
+    """Up to four rgthree stack slots. Empty name is dropped."""
+    out: list[dict[str, Any]] = []
+    raw = s.get("loras")
+    if isinstance(raw, list):
+        for item in raw:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name") or "").strip()
+            if not name or name.lower() == "none":
+                continue
+            try:
+                strength = float(item.get("strength") if item.get("strength") is not None else LORA_STRENGTH)
+            except (TypeError, ValueError):
+                strength = float(LORA_STRENGTH)
+            out.append({"name": name, "strength": strength})
+            if len(out) >= LORA_SLOTS:
+                break
+        return out
+    name = str(s.get("lora_name") or "").strip()
+    if name and name.lower() != "none":
+        try:
+            strength = float(s.get("lora_strength") if s.get("lora_strength") is not None else LORA_STRENGTH)
+        except (TypeError, ValueError):
+            strength = float(LORA_STRENGTH)
+        return [{"name": name, "strength": strength}]
+    return []
+
+
+def migrate_loras(s: dict[str, Any]) -> dict[str, Any]:
+    slots = normalize_loras(s)
+    s["loras"] = slots
+    if slots:
+        s["lora_name"] = slots[0]["name"]
+        s["lora_strength"] = slots[0]["strength"]
+    else:
+        s["lora_name"] = ""
+        s["lora_strength"] = LORA_STRENGTH
+    if not str(s.get("unet_name") or "").strip():
+        s["unet_name"] = UNET
+    s.setdefault("models_dir", "")
+    s.setdefault("loras_dir", "")
+    return s
+
+
+def list_weights(folder: str | Path, *, limit: int = 400) -> list[str]:
+    """Relative weight names from a Comfy models or loras folder."""
+    root = resolve_user_path(str(folder))
+    if not root.is_dir():
+        raise ValueError(f"not a folder: {root}")
+    found: list[str] = []
+    for p in sorted(root.rglob("*")):
+        if not p.is_file() or p.name.startswith("."):
+            continue
+        if p.suffix.lower() not in WEIGHT_SUFFIXES:
+            continue
+        found.append(p.relative_to(root).as_posix())
+        if len(found) >= limit:
+            break
+    return found
+
 ROOT = Path(__file__).resolve().parent.parent
 PKG = Path(__file__).resolve().parent
 DEFAULT_SETTINGS_PATH = PKG / "settings.json"
 DEMO_BOOK_ID = "default"
 DEMO_SEED = PKG / "demo" / "bos"
-_PATH_KEYS = ("workflow_text", "workflow_ref", "output_root")
+_PATH_KEYS = ("workflow_text", "workflow_ref", "output_root", "models_dir", "loras_dir")
+WEIGHT_SUFFIXES = {".safetensors", ".ckpt", ".pt", ".sft", ".gguf"}
 
 
 def is_protected_book(book_id: str) -> bool:
@@ -95,8 +160,12 @@ def default_settings() -> dict[str, Any]:
         "app_port": 7860,
         "workflow_text": "Krea2T_V3_ref_clean01-API.json",
         "workflow_ref": "Krea2T_V3_ref_clean01-API.json",
+        "unet_name": UNET,
+        "models_dir": "",
+        "loras_dir": "",
         "lora_name": LORA,
         "lora_strength": LORA_STRENGTH,
+        "loras": [{"name": LORA, "strength": LORA_STRENGTH}],
         "style": STYLE,
         "layout": "one",
         "layout_text": LAYOUT_ONE,
@@ -124,7 +193,7 @@ def load_settings(path: Path | None = None) -> dict[str, Any]:
             base.update(json.loads(path.read_text(encoding="utf-8")))
         except json.JSONDecodeError:
             pass
-    s = migrate_layout(base)
+    s = migrate_loras(migrate_layout(base))
     if not str(s.get("ref_cutout_text") or "").strip():
         s["ref_cutout_text"] = REF_CUTOUT
     for key in _PATH_KEYS:
@@ -139,6 +208,7 @@ def save_settings(data: dict[str, Any], path: Path | None = None) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     merged = default_settings()
     merged.update(data)
+    merged = migrate_loras(merged)
     for key in _PATH_KEYS:
         if merged.get(key):
             merged[key] = portable_path(merged[key])

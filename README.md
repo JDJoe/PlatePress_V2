@@ -48,7 +48,9 @@ There is no separate Plate layout radio. The card *is* the mode.
 
 **Send character stills** is off unless you check it. On: if the slug names a Cast token and that card has a still, the file is `image1` (second named body → `image2`). Write `REFERENCE: use picture1…` on the Book wall; the app does not add that sentence. No still on the card → no image; unused LoadImage nodes are dropped. **Stills are cutouts** is off unless you check it; the sentence is editable and is not auto-inserted into the prompt.
 
-Factory sampler (leave it unless you mean it): 8 steps, CFG 1, euler, beta. LoRA filename is a setting, not the product.
+Factory sampler (leave it unless you mean it): 8 steps, CFG 1, euler, beta.
+
+**Model and LoRAs** live in Settings. Point at Comfy’s `models/diffusion_models` (or `unet`) folder and `models/loras`, Scan, pick. The diffusion model must be a **Krea 2** UNET. Up to four LoRAs. Plate Press patches the shipped V3 graph; do not export a new API workflow to change these.
 
 ## Cast (per book)
 

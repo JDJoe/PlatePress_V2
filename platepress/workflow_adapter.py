@@ -140,6 +140,8 @@ def fill(
     cfg: float | None = None,
     sampler_name: str | None = None,
     scheduler: str | None = None,
+    unet_name: str | None = None,
+    loras: list[dict[str, Any]] | None = None,
 ) -> Workflow:
     wf = copy.deepcopy(workflow)
     nmap = detect(wf)
@@ -151,9 +153,26 @@ def fill(
     _set(wf, nmap.positive, nmap.positive_key, positive)
     if nmap.negative:
         _set(wf, nmap.negative, "text", negative)
+    if nmap.unet and unet_name:
+        _set(wf, nmap.unet, "unet_name", unet_name)
     if nmap.lora:
-        _set(wf, nmap.lora, "lora_01", lora_name)
-        _set(wf, nmap.lora, "strength_01", float(lora_strength))
+        if loras is not None:
+            slots = [
+                (str(item.get("name") or "").strip(), float(item.get("strength") or 0))
+                for item in loras
+                if isinstance(item, dict) and str(item.get("name") or "").strip()
+                and str(item.get("name") or "").strip().lower() != "none"
+            ][:4]
+            for i in range(1, 5):
+                if i <= len(slots):
+                    _set(wf, nmap.lora, f"lora_0{i}", slots[i - 1][0])
+                    _set(wf, nmap.lora, f"strength_0{i}", slots[i - 1][1])
+                else:
+                    _set(wf, nmap.lora, f"lora_0{i}", "None")
+                    _set(wf, nmap.lora, f"strength_0{i}", 0.0)
+        else:
+            _set(wf, nmap.lora, "lora_01", lora_name)
+            _set(wf, nmap.lora, "strength_01", float(lora_strength))
     _set(wf, nmap.sampler, "seed", int(seed))
     samp_in = wf[nmap.sampler]["inputs"]
     samp_in["control_after_generate"] = "fixed"
