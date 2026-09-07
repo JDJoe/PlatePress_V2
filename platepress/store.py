@@ -101,8 +101,34 @@ def migrate_loras(s: dict[str, Any]) -> dict[str, Any]:
     return s
 
 
+_MODEL_ROOT_NAMES = {
+    "diffusion_models",
+    "unet",
+    "unets",
+    "loras",
+    "checkpoints",
+    "clip",
+    "vae",
+    "text_encoders",
+    "models",
+}
+
+
+def _combo_name(root: Path, parent: Path, filename: str) -> str:
+    """Keep the listed directory name, add the listed filename. Never resolve."""
+    try:
+        rel_parent = parent.relative_to(root)
+    except ValueError:
+        rel_parent = Path(".")
+    if rel_parent == Path("."):
+        if root.name.lower() in _MODEL_ROOT_NAMES:
+            return filename
+        return f"{root.name}/{filename}"
+    return f"{rel_parent.as_posix()}/{filename}"
+
+
 def list_weights(folder: str | Path, *, limit: int = 400) -> list[str]:
-    """Relative weight names as Comfy sees them. Keep symlink names; do not resolve."""
+    """Comfy combo names: listed folder name + listed file name. Softlinks keep those names."""
     root = resolve_user_path(str(folder), follow_symlinks=False)
     if not root.is_dir():
         raise ValueError(f"not a folder: {root}")
@@ -118,15 +144,11 @@ def list_weights(folder: str | Path, *, limit: int = 400) -> list[str]:
             dirnames[:] = []
             continue
         seen_real.add(real)
+        parent = Path(dirpath)
         for name in filenames:
             if name.startswith(".") or Path(name).suffix.lower() not in WEIGHT_SUFFIXES:
                 continue
-            p = Path(dirpath) / name
-            try:
-                rel = p.relative_to(root).as_posix()
-            except ValueError:
-                continue
-            found.append(rel)
+            found.append(_combo_name(root, parent, name))
             if len(found) >= limit:
                 return sorted(found, key=str.lower)
     return sorted(found, key=str.lower)

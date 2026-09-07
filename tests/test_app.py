@@ -393,6 +393,14 @@ def test_list_weights_keeps_symlink_names(tmp_path):
     (sub / "KREA2").symlink_to(real)
     assert list_weights(sub) == ["KREA2/gonzalomoKrea2_v40.safetensors"]
 
+    # Pointed at the KREA2 folder itself (often a softlink): keep "KREA2/" + file.
+    assert list_weights(krea) == ["KREA2/gonzalomoKrea2_v40.safetensors"]
+    krea_link = tmp_path / "krea_link"
+    krea_link.symlink_to(real)
+    krea_link_as = tmp_path / "KREA2_linkdir"
+    krea_link_as.symlink_to(real)
+    assert list_weights(krea_link_as) == ["KREA2_linkdir/gonzalomoKrea2_v40.safetensors"]
+
 
 def test_scan_weights_api(tmp_path, monkeypatch):
     from platepress import store
