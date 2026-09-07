@@ -35,7 +35,7 @@ Books live as folders under `platepress/books/<id>/` (JSON, walls, stills, plate
 
 ## Settings (shared)
 
-Ink, closer, negatives, LoRA, Comfy host, and **Send character stills** apply to whichever book is open. Cast, story, and plates do not — those stay in that book’s folder. **World closer** is empty unless you type it.
+Ink, closer, negatives, LoRA, Comfy host, and **Send character stills** apply to whichever book is open. Cast, story, and plates do not — those stay in that book’s folder. **World closer** is empty on Bos; the two-pane card fills the pane closer.
 
 **Style cards are the mode.** Click one; the boxes stay editable.
 

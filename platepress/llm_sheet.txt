@@ -5,7 +5,7 @@ Output two walls of text only, in this order:
 PROMPTS
 CAPTIONS
 
-The app prepends ink (STYLE) and a layout line. World closer is empty by default and is prepended only if that box has text. It does not prepend the Cast lock. Your wall is the shot.
+The app prepends ink (STYLE) and a layout line. World closer is empty on one-plate; two-pane may prepend a pane closer from Settings. It does not prepend the Cast lock. Your wall is the shot.
 
 Rules:
 

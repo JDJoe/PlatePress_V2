@@ -22,6 +22,9 @@ def test_portable_paths_are_repo_relative():
     assert "/home/" not in s["output_root"]
     assert s["ref_cutout"] is False
     assert s["tail"] == ""
+    from platepress.defaults import EXAMPLES
+    assert EXAMPLES["bos"]["tail"] == ""
+    assert "own scene" in (EXAMPLES["split"]["tail"] or "").lower()
     assert "cutouts" in (s.get("ref_cutout_text") or "").lower()
 
 

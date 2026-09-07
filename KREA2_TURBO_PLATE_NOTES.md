@@ -17,7 +17,7 @@ aethernouveau. Ink and watercolor by Moebius, thin black outlines, muted ochre, 
 ```
 
 Layout: one undivided plate.  
-TAIL: empty by default. Type a closer only if you want one prepended.
+TAIL: empty on Bos. Two-pane card fills “each pane is its own scene…”.
 
 Assembler now: **STYLE → layout → [closer if any] → Book wall**
 
