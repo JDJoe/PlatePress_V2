@@ -64,6 +64,37 @@ class ComfyClient:
             except Exception:
                 return False, f"ComfyUI not reachable: {e}"
 
+    def object_info(self) -> dict[str, Any]:
+        with httpx.Client(timeout=self.timeout) as c:
+            r = c.get(self.url("/object_info"))
+            r.raise_for_status()
+            body = r.json()
+        if not isinstance(body, dict):
+            raise ComfyError("Comfy /object_info was not an object")
+        return body
+
+    def _combo(self, info: dict[str, Any], class_type: str, input_name: str) -> list[str]:
+        node = info.get(class_type) or {}
+        inputs = node.get("input") or {}
+        spec = (inputs.get("required") or {}).get(input_name) or (inputs.get("optional") or {}).get(
+            input_name
+        )
+        names = spec[0] if isinstance(spec, list) and spec else []
+        if not isinstance(names, list):
+            return []
+        return [str(x) for x in names if x is not None and str(x) != ""]
+
+    def list_unets(self, info: dict[str, Any] | None = None) -> list[str]:
+        info = info if info is not None else self.object_info()
+        return [n for n in self._combo(info, "UNETLoader", "unet_name") if n.lower() != "none"]
+
+    def list_loras(self, info: dict[str, Any] | None = None) -> list[str]:
+        info = info if info is not None else self.object_info()
+        names = self._combo(info, "Lora Loader Stack (rgthree)", "lora_01")
+        if not names:
+            names = self._combo(info, "LoraLoader", "lora_name")
+        return [n for n in names if n.lower() != "none"]
+
     def upload_image(self, path: Path) -> str:
         """POST /upload/image. Returns the filename Comfy LoadImage expects."""
         try:

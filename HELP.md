@@ -25,7 +25,7 @@ Ink, layout line, closer, NEG, LoRA, and stills-on/off are **shared**. Cast, sto
 - **NEG** is the negative prompt.
 - **Send character stills** is off unless you check it. On: if the slug names a Cast token and that card has a still, the file is `image1` (second named body → `image2`). No still on the card → no image, same graph, unused LoadImage nodes dropped. Write `REFERENCE: use picture1…` in the Book wall yourself; the app does not add that sentence.
 - **Stills are cutouts** is off unless you check it. The cutout sentence is editable. It is not stuffed into the prompt unless you put it on the wall.
-- **Model and LoRAs** — set the Comfy diffusion-models folder and the loras folder, Scan, then pick. The UNET must be Krea 2. Up to four LoRAs (rgthree stack). This swaps files in the V3 graph; do not export a new API workflow. CLIP and VAE stay as they are.
+- **Model and LoRAs** — **Load lists from Comfy** so names match UNETLoader (including the `KREA2/` prefix). Bare filenames fail. The UNET must be Krea 2. Up to four LoRAs. Folders are a fallback if Comfy is down. Do not export a new API workflow. CLIP and VAE stay as they are.
 - Do not touch sampler unless you mean it. Factory: 8 steps, CFG 1, euler, beta.
 
 API graph: `Krea2T_V3_ref_clean01-API.json` (text and stills).

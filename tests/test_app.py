@@ -340,6 +340,23 @@ def test_normalize_loras_from_legacy_fields():
     assert "krea2" in s["unet_name"].lower()
 
 
+def test_match_combo_name_unique_basename():
+    from platepress.store import match_combo_name
+
+    available = [
+        "KREA2/krea2_turbo_bf16.safetensors",
+        "KREA2/kreamania_variant7.safetensors",
+        "FLUX/flux_dev.safetensors",
+    ]
+    assert match_combo_name("kreamania_variant7.safetensors", available) == (
+        "KREA2/kreamania_variant7.safetensors"
+    )
+    assert match_combo_name("KREA2/kreamania_variant7.safetensors", available) == (
+        "KREA2/kreamania_variant7.safetensors"
+    )
+    assert match_combo_name("missing.safetensors", available) is None
+
+
 def test_list_weights_relative_names(tmp_path):
     from platepress.store import list_weights
 
@@ -352,8 +369,10 @@ def test_list_weights_relative_names(tmp_path):
 
 def test_scan_weights_api(tmp_path, monkeypatch):
     from platepress import store
+    from platepress.comfy_client import ComfyClient
 
     monkeypatch.setattr(store, "DEFAULT_SETTINGS_PATH", tmp_path / "settings.json")
+    monkeypatch.setattr(ComfyClient, "ping", lambda self: (False, "ComfyUI is not running"))
     models = tmp_path / "diffusion_models"
     loras = tmp_path / "loras"
     (models / "KREA2").mkdir(parents=True)

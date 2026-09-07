@@ -50,7 +50,7 @@ There is no separate Plate layout radio. The card *is* the mode.
 
 Factory sampler (leave it unless you mean it): 8 steps, CFG 1, euler, beta.
 
-**Model and LoRAs** live in Settings. Point at Comfy’s `models/diffusion_models` (or `unet`) folder and `models/loras`, Scan, pick. The diffusion model must be a **Krea 2** UNET. Up to four LoRAs. Plate Press patches the shipped V3 graph; do not export a new API workflow to change these.
+**Model and LoRAs** live in Settings. **Load lists from Comfy** and pick the exact UNETLoader name (e.g. `KREA2/krea2_turbo_bf16.safetensors`). Bare filenames fail validation. Must be a **Krea 2** UNET. Up to four LoRAs. Plate Press patches the shipped V3 graph; do not export a new API workflow to change these. Folders are only a fallback if Comfy is down.
 
 ## Cast (per book)
 

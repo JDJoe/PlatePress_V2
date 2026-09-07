@@ -44,6 +44,7 @@ from .store import (
     load_book,
     load_seeds,
     load_settings,
+    match_combo_name,
     normalize_loras,
     new_id,
     safe_book_id,
@@ -290,6 +291,33 @@ def _run_job(job: dict[str, Any]) -> None:
     wf_path = Path(job["workflow"])
     wf = load_workflow(wf_path)
     slots = normalize_loras(s)
+    unet_name = str(s.get("unet_name") or "").strip() or None
+    try:
+        info = client.object_info()
+        unets = client.list_unets(info)
+        lora_names = client.list_loras(info)
+    except Exception:
+        unets, lora_names = [], []
+    if unet_name and unets:
+        resolved = match_combo_name(unet_name, unets)
+        if not resolved:
+            raise ComfyError(
+                f"UNET {unet_name!r} is not in Comfy UNETLoader. "
+                "Load lists from Comfy and pick the exact name "
+                "(subfolder prefix counts, e.g. KREA2/kreamania_variant7.safetensors)."
+            )
+        unet_name = resolved
+    if lora_names:
+        fixed: list[dict[str, Any]] = []
+        for slot in slots:
+            hit = match_combo_name(slot["name"], lora_names)
+            if not hit:
+                raise ComfyError(
+                    f"LoRA {slot['name']!r} is not in Comfy's LoRA list. "
+                    "Load lists from Comfy and pick the exact name (subfolder prefix counts)."
+                )
+            fixed.append({**slot, "name": hit})
+        slots = fixed
     filled = fill(
         wf,
         positive=job["assembled"],
@@ -304,7 +332,7 @@ def _run_job(job: dict[str, Any]) -> None:
         cfg=float(s.get("cfg") or 1),
         sampler_name=s.get("sampler_name") or "euler",
         scheduler=s.get("scheduler") or "beta",
-        unet_name=str(s.get("unet_name") or "").strip() or None,
+        unet_name=unet_name,
         loras=slots,
     )
     prompt_id = client.queue(filled)
@@ -406,27 +434,48 @@ def test_comfy() -> dict[str, Any]:
 
 @app.post("/api/weights")
 def post_weights(body: dict[str, Any]) -> dict[str, Any]:
-    """Scan the folders you pointed at. Names are relative, as Comfy expects."""
+    """Prefer Comfy's UNETLoader / LoRA combo lists so names match on queue."""
     models: list[str] = []
     loras: list[str] = []
     errors: list[str] = []
+    source = ""
+    s = _settings()
+    host = str(body.get("host") or s.get("host") or "127.0.0.1")
+    try:
+        port = int(body.get("port") or s.get("port") or 8188)
+    except (TypeError, ValueError):
+        port = int(s.get("port") or 8188)
+    client = ComfyClient(host=host, port=port)
+    ok, msg = client.ping()
+    if ok:
+        try:
+            info = client.object_info()
+            models = client.list_unets(info)
+            loras = client.list_loras(info)
+            source = "comfy"
+        except Exception as e:
+            errors.append(f"Comfy lists: {e}")
+    elif not (str(body.get("models_dir") or "").strip() or str(body.get("loras_dir") or "").strip()):
+        errors.append(msg)
     models_dir = str(body.get("models_dir") or "").strip()
     loras_dir = str(body.get("loras_dir") or "").strip()
-    if models_dir:
+    if not models and models_dir:
         try:
             models = list_weights(models_dir)
+            source = source or "folders"
         except Exception as e:
-            errors.append(f"models: {e}")
-    else:
-        errors.append("set the diffusion models folder")
-    if loras_dir:
+            errors.append(f"models folder: {e}")
+    if not loras and loras_dir:
         try:
             loras = list_weights(loras_dir)
+            source = source or "folders"
         except Exception as e:
-            errors.append(f"loras: {e}")
-    else:
-        errors.append("set the LoRAs folder")
-    return {"models": models, "loras": loras, "errors": errors}
+            errors.append(f"loras folder: {e}")
+    if not models and not models_dir and source != "comfy":
+        errors.append("start Comfy, or set the diffusion models folder")
+    if not loras and not loras_dir and source != "comfy":
+        errors.append("start Comfy, or set the LoRAs folder")
+    return {"models": models, "loras": loras, "errors": errors, "source": source}
 
 
 @app.get("/api/book")

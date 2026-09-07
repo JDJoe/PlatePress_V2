@@ -116,6 +116,28 @@ def list_weights(folder: str | Path, *, limit: int = 400) -> list[str]:
             break
     return found
 
+
+def match_combo_name(wanted: str, available: list[str]) -> str | None:
+    """Exact Comfy combo name, or a unique basename (KREA2/file.safetensors)."""
+    wanted = (wanted or "").strip()
+    if not wanted:
+        return None
+    names = [str(n) for n in available if n and str(n).lower() != "none"]
+    if wanted in names:
+        return wanted
+    low = wanted.lower()
+    hits = [n for n in names if n.lower() == low]
+    if len(hits) == 1:
+        return hits[0]
+    base = Path(wanted).name
+    hits = [n for n in names if Path(n).name == base]
+    if len(hits) == 1:
+        return hits[0]
+    hits = [n for n in names if Path(n).name.lower() == base.lower()]
+    if len(hits) == 1:
+        return hits[0]
+    return None
+
 ROOT = Path(__file__).resolve().parent.parent
 PKG = Path(__file__).resolve().parent
 DEFAULT_SETTINGS_PATH = PKG / "settings.json"

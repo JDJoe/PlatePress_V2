@@ -59,14 +59,35 @@ const LORA_SLOTS = 4;
 let weightLists = { models: [], loras: [] };
 
 function krea2Name(name) {
-  return /krea2/i.test(name || "");
+  return /krea/i.test(name || "");
+}
+
+function resolveCombo(wanted, available) {
+  const name = String(wanted || "").trim();
+  const list = available || [];
+  if (!name || !list.length) return name;
+  if (list.indexOf(name) >= 0) return name;
+  const base = name.split("/").pop();
+  const hits = list.filter((n) => String(n).split("/").pop() === base);
+  if (hits.length === 1) return hits[0];
+  return name;
 }
 
 function updateUnetWarn() {
   const el = $("unet-warn");
   if (!el) return;
   const name = ($("unet_name") && $("unet_name").value) || "";
-  el.classList.toggle("off", !name || krea2Name(name));
+  const models = weightLists.models || [];
+  const resolved = resolveCombo(name, models);
+  const inList = !models.length || !name || models.indexOf(resolved) >= 0;
+  const krea = !name || krea2Name(resolved);
+  if (name && models.length && !inList) {
+    el.textContent = name + " is not in Comfy’s UNETLoader list. Load lists from Comfy and pick the exact name (often KREA2/…).";
+    el.classList.remove("off");
+    return;
+  }
+  el.textContent = "Must be a Krea 2 UNET. Pick the exact Comfy name (e.g. KREA2/kreamania_variant7.safetensors). Bare filenames fail. This app does not download models.";
+  el.classList.toggle("off", krea);
 }
 
 function fillDatalist(id, names, extra) {
@@ -773,20 +794,30 @@ if ($("scan-weights")) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          host: ($("host") && $("host").value) || "",
+          port: ($("port") && $("port").value) || "",
           models_dir: ($("models_dir") && $("models_dir").value) || "",
           loras_dir: ($("loras_dir") && $("loras_dir").value) || "",
         }),
       });
       weightLists.models = r.models || [];
       weightLists.loras = r.loras || [];
+      if ($("unet_name")) {
+        $("unet_name").value = resolveCombo($("unet_name").value, weightLists.models);
+      }
+      document.querySelectorAll(".lora-name").forEach((el) => {
+        el.value = resolveCombo(el.value, weightLists.loras);
+      });
       fillDatalist("unet-list", weightLists.models, $("unet_name") && $("unet_name").value);
       fillDatalist("lora-list", weightLists.loras);
+      updateUnetWarn();
       const bits = [];
-      if (weightLists.models.length) bits.push(weightLists.models.length + " models");
+      if (r.source === "comfy") bits.push("from Comfy");
+      if (weightLists.models.length) bits.push(weightLists.models.length + " UNETs");
       if (weightLists.loras.length) bits.push(weightLists.loras.length + " LoRAs");
       const err = (r.errors || []).join("; ");
       if (err && !bits.length) showBanner(err, "err");
-      else showBanner((bits.join(", ") || "scanned") + (err ? " · " + err : ""), err && bits.length ? "warn" : "ok");
+      else showBanner((bits.join(", ") || "loaded") + (err ? " · " + err : ""), err && bits.length ? "warn" : "ok");
     } catch (e) {
       showBanner(e.message, "err");
     }
