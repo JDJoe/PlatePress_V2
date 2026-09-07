@@ -121,14 +121,21 @@ METAPHORS = (
     "enamel",
 )
 
-T1_ONE_SCENE = (
-    "turned three-quarter away down a long cargo bay, helmet toward the crate not the aisle, "
-    "brown gloves hauling a sealed ox-hide crate along ribbed decking between stacked drums, "
-    "a slit of rust light at the far hatch, the crate seams gleaming like liquid silver."
-)
-T1_TWO_SCENE = (
-    "turned three-quarter away down a long cargo bay, helmet toward the crate not the aisle, "
-    "brown gloves hauling a sealed ox-hide crate along ribbed decking between stacked drums, "
-    "a slit of rust light at the far hatch, the crate seams gleaming like liquid silver, "
-    "the hull plates over her shoulder peeling like gold leaf over black glass."
-)
+T1_ONE_SCENE = """\
+REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and composition from the reference.
+SHOT: Medium over-the-shoulder, three-quarter from behind.
+CAMERA: Behind her left shoulder. Full body in the bay. Both eyes hidden. Does not face the viewer.
+LOCATION: Long cargo bay, ribbed decking, stacked drums, a slit of rust light at the far hatch.
+ACTION: Caught in the instant of hauling a sealed ox-hide crate down the aisle.
+GAZE: Helmet toward the crate, not the aisle, never the viewer.
+HANDS: Both brown gloves on the crate.
+MOTION: Crate seams gleaming like liquid silver."""
+T1_TWO_SCENE = """\
+REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and composition from the reference.
+SHOT: Medium over-the-shoulder, three-quarter from behind.
+CAMERA: Behind her left shoulder. Full body in the bay. Both eyes hidden. Does not face the viewer.
+LOCATION: Long cargo bay, ribbed decking, stacked drums, a slit of rust light at the far hatch.
+ACTION: Caught in the instant of hauling a sealed ox-hide crate down the aisle.
+GAZE: Helmet toward the crate, not the aisle, never the viewer.
+HANDS: Both brown gloves on the crate.
+MOTION: Crate seams gleaming like liquid silver. Hull plates over her shoulder peeling like gold leaf over black glass."""
