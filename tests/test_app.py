@@ -367,6 +367,33 @@ def test_list_weights_relative_names(tmp_path):
     assert names == ["KREA2/krea2_turbo_bf16.safetensors"]
 
 
+def test_list_weights_keeps_symlink_names(tmp_path):
+    from platepress.store import list_weights, portable_path, resolve_user_path
+
+    real = tmp_path / "actual_weights"
+    real.mkdir()
+    target = real / "gonzalomoKrea2_v40.safetensors"
+    target.write_bytes(b"x")
+    models = tmp_path / "diffusion_models"
+    krea = models / "KREA2"
+    krea.mkdir(parents=True)
+    (krea / "gonzalomoKrea2_v40.safetensors").symlink_to(target)
+    names = list_weights(models)
+    assert names == ["KREA2/gonzalomoKrea2_v40.safetensors"]
+
+    linked_root = tmp_path / "models_link"
+    linked_root.symlink_to(models)
+    assert resolve_user_path(str(linked_root), follow_symlinks=False).name == "models_link"
+    port = portable_path(linked_root, follow_symlinks=False)
+    assert "models_link" in port.replace("\\", "/")
+    assert "actual_weights" not in port
+
+    sub = tmp_path / "diffusion_models_sub"
+    sub.mkdir()
+    (sub / "KREA2").symlink_to(real)
+    assert list_weights(sub) == ["KREA2/gonzalomoKrea2_v40.safetensors"]
+
+
 def test_scan_weights_api(tmp_path, monkeypatch):
     from platepress import store
     from platepress.comfy_client import ComfyClient

@@ -48,7 +48,7 @@
       <h3>Model and LoRAs</h3>
       <p class="tiny">These swap files inside the V3 graph. Do not export a new API workflow. CLIP and VAE stay as they are. The diffusion model must be <strong>Krea 2</strong>.</p>
       <button type="button" class="act" id="scan-weights">Load lists from Comfy</button>
-      <p class="tiny">Uses the names UNETLoader actually accepts, including the <code>KREA2/</code> prefix. Folders below are only a fallback if Comfy is down.</p>
+      <p class="tiny">Uses the names UNETLoader actually accepts, including the <code>KREA2/</code> prefix. Softlinks keep their name in that folder; we do not rewrite them to the real path. Folders below are only a fallback if Comfy is down.</p>
       <label>Diffusion models folder (fallback)</label>
       <input id="models_dir" type="text" placeholder="~/ComfyUI/models/diffusion_models" />
       <label>LoRAs folder (fallback)</label>

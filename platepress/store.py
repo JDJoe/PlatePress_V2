@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import uuid
@@ -101,20 +102,34 @@ def migrate_loras(s: dict[str, Any]) -> dict[str, Any]:
 
 
 def list_weights(folder: str | Path, *, limit: int = 400) -> list[str]:
-    """Relative weight names from a Comfy models or loras folder."""
-    root = resolve_user_path(str(folder))
+    """Relative weight names as Comfy sees them. Keep symlink names; do not resolve."""
+    root = resolve_user_path(str(folder), follow_symlinks=False)
     if not root.is_dir():
         raise ValueError(f"not a folder: {root}")
     found: list[str] = []
-    for p in sorted(root.rglob("*")):
-        if not p.is_file() or p.name.startswith("."):
+    seen_real: set[str] = set()
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=True):
+        try:
+            real = os.path.realpath(dirpath)
+        except OSError:
+            dirnames[:] = []
             continue
-        if p.suffix.lower() not in WEIGHT_SUFFIXES:
+        if real in seen_real:
+            dirnames[:] = []
             continue
-        found.append(p.relative_to(root).as_posix())
-        if len(found) >= limit:
-            break
-    return found
+        seen_real.add(real)
+        for name in filenames:
+            if name.startswith(".") or Path(name).suffix.lower() not in WEIGHT_SUFFIXES:
+                continue
+            p = Path(dirpath) / name
+            try:
+                rel = p.relative_to(root).as_posix()
+            except ValueError:
+                continue
+            found.append(rel)
+            if len(found) >= limit:
+                return sorted(found, key=str.lower)
+    return sorted(found, key=str.lower)
 
 
 def match_combo_name(wanted: str, available: list[str]) -> str | None:
@@ -144,6 +159,7 @@ DEFAULT_SETTINGS_PATH = PKG / "settings.json"
 DEMO_BOOK_ID = "default"
 DEMO_SEED = PKG / "demo" / "bos"
 _PATH_KEYS = ("workflow_text", "workflow_ref", "output_root", "models_dir", "loras_dir")
+_SYMLINK_PATH_KEYS = ("models_dir", "loras_dir")
 WEIGHT_SUFFIXES = {".safetensors", ".ckpt", ".pt", ".sft", ".gguf"}
 
 
@@ -151,26 +167,27 @@ def is_protected_book(book_id: str) -> bool:
     return (book_id or "") == DEMO_BOOK_ID
 
 
-def resolve_user_path(value: str) -> Path:
+def resolve_user_path(value: str, *, follow_symlinks: bool = True) -> Path:
     """Relative to the repo root; ~ expands. Absolute paths stay as-is."""
     p = Path(str(value)).expanduser()
     if not p.is_absolute():
         p = ROOT / p
-    return p.resolve()
+    return p.resolve() if follow_symlinks else p.absolute()
 
 
-def portable_path(value: str | Path) -> str:
+def portable_path(value: str | Path, *, follow_symlinks: bool = True) -> str:
     """Repo-relative if possible, else ~/..., else absolute."""
     p = Path(value).expanduser()
     if not p.is_absolute():
         return Path(value).as_posix()
-    p = p.resolve()
+    p = p.resolve() if follow_symlinks else p.absolute()
     try:
         return p.relative_to(ROOT).as_posix()
     except ValueError:
         pass
     try:
-        return "~/" + p.relative_to(Path.home()).as_posix()
+        home = Path.home() if follow_symlinks else Path.home().absolute()
+        return "~/" + p.relative_to(home).as_posix()
     except ValueError:
         return str(p)
 
@@ -220,7 +237,9 @@ def load_settings(path: Path | None = None) -> dict[str, Any]:
         s["ref_cutout_text"] = REF_CUTOUT
     for key in _PATH_KEYS:
         if s.get(key):
-            s[key] = str(resolve_user_path(str(s[key])))
+            s[key] = str(
+                resolve_user_path(str(s[key]), follow_symlinks=key not in _SYMLINK_PATH_KEYS)
+            )
     ensure_demo_book(s)
     return s
 
@@ -233,7 +252,9 @@ def save_settings(data: dict[str, Any], path: Path | None = None) -> None:
     merged = migrate_loras(merged)
     for key in _PATH_KEYS:
         if merged.get(key):
-            merged[key] = portable_path(merged[key])
+            merged[key] = portable_path(
+                merged[key], follow_symlinks=key not in _SYMLINK_PATH_KEYS
+            )
     path.write_text(json.dumps(merged, indent=2) + "\n", encoding="utf-8")
 
 
