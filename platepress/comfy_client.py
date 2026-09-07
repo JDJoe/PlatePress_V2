@@ -2,13 +2,34 @@
 
 from __future__ import annotations
 
+import io
 import time
 from pathlib import Path
 from typing import Any
 
 import httpx
+from PIL import Image
 
 from .workflow_adapter import AdapterError, Workflow
+
+LATENT_EDGE = 1024
+
+
+def still_for_comfy(path: Path, max_edge: int = LATENT_EDGE) -> tuple[str, bytes]:
+    """PNG for LoadImage. JPEG stills on flat white pixelate Qwen; latent is 1024."""
+    im = Image.open(path)
+    im.load()
+    if im.mode == "P":
+        im = im.convert("RGBA" if "transparency" in im.info else "RGB")
+    elif im.mode not in ("RGB", "RGBA"):
+        im = im.convert("RGB")
+    w, h = im.size
+    if max_edge and max(w, h) > max_edge:
+        scale = max_edge / max(w, h)
+        im = im.resize((max(1, int(w * scale)), max(1, int(h * scale))), Image.Resampling.LANCZOS)
+    buf = io.BytesIO()
+    im.save(buf, format="PNG", optimize=True)
+    return path.stem + ".png", buf.getvalue()
 
 
 class ComfyError(Exception):
@@ -45,8 +66,11 @@ class ComfyClient:
 
     def upload_image(self, path: Path) -> str:
         """POST /upload/image. Returns the filename Comfy LoadImage expects."""
-        data = path.read_bytes()
-        files = {"image": (path.name, data, "application/octet-stream")}
+        try:
+            name, data = still_for_comfy(path)
+        except Exception:
+            name, data = path.name, path.read_bytes()
+        files = {"image": (name, data, "application/octet-stream")}
         form = {"overwrite": "true", "type": "input"}
         try:
             with httpx.Client(timeout=60.0) as c:

@@ -8,66 +8,81 @@ Also in the app: **Help** tab. The header always shows the open book.
 
 1. Settings — pick a style card, Test connection.
 2. Cast — this book’s people. Optional stills.
-3. Book — paste scenes. Parse. Generate.
+3. Book — paste the labeled shot wall. Parse. Generate.
 4. Queue — letter captions *after* the sampler. Never ask Comfy for text in the picture.
 
 ## Settings
 
-Ink, closer, NEG, LoRA, and stills-on/off are **shared**. Cast, story, and plates belong to the open book.
+Ink, layout line, closer, NEG, LoRA, and stills-on/off are **shared**. Cast, story, and plates belong to the open book.
 
 - **Test connection** first.
 - **Style cards are the mode.** There is no separate Plate layout radio.
-- **Bos, one plate**: each slug is one image. If that slug contains `left pane:` / `right pane:`, only that plate splits. The rest stay undivided.
-- **Two-pane comic**: consecutive slugs share one image (p1 left, p2 right). Do not write “Left pane” yourself. Each pane is its own scene as written — not “same place, same hour” unless you write that.
+- **Bos, one plate**: each slug is one image. If that slug contains `left pane:` / `right pane:`, only that plate splits.
+- **Two-pane comic**: consecutive slugs share one image (p1 left, p2 right). Do not write “Left pane” yourself. Each pane is its own scene as written.
 - Click a card to fill ink, layout line, closer, and matching negatives. The boxes stay editable.
-- **Send character stills** is off unless you mean that. Off = text workflow, locks only. On: first still → `image1`, second → `image2`. Prompt says `use imageN as reference`.
-- Optional: **Stills are cutouts** — tells Comfy the background is already gone.
+- **Ink** and **Layout line** are prepended to every plate.
+- **World closer** is prepended only if that box has text. Empty is fine.
+- **NEG** is the negative prompt.
+- **Send character stills** is off unless you check it. On: if the slug names a Cast token and that card has a still, the file is `image1` (second named body → `image2`). No still on the card → no image, same graph, unused LoadImage nodes dropped. Write `REFERENCE: use picture1…` in the Book wall yourself; the app does not add that sentence.
+- **Stills are cutouts** is off unless you check it. The cutout sentence is editable. It is not stuffed into the prompt unless you put it on the wall.
 - LoRA filename is a setting. Change it later. It is not the product.
 - Do not touch sampler unless you mean it. Factory: 8 steps, CFG 1, euler, beta.
+
+API graph: `Krea2T_V3_ref_clean01-API.json` (text and stills).
 
 ## Cast
 
 - Cast is per book. Five books can all have ANDROID; they are not the same person.
 - Header plus Cast, Book, Queue, and Settings headings show which book you are editing.
-- Name is the token in the story wall: `ANDROID` or `{ANDROID}`.
-- Lock is the identity sentence stuffed into every plate that names that character. A spacesuit lock will beat a gilt-chair scene. Put the clothes you want in the lock.
+- **Name** is the token on the wall: `PILOT` or `{PILOT}`. It must be a whole word. `PILOT1` does not match `PILOT`, and the still will not attach.
+- **Lock** is face + suit + pack for *you* and for **Copy instructions for your LLM**. The app does **not** paste the lock into the Comfy prompt. Put look, costume, and `picture1` instructions on the Book wall.
+- Never put posing, standing, cute, helmet-hug, or looking over the shoulder in the lock. Helmet and over-shoulder live on one slug.
 - A name like `PATRON` only works if that card exists on this book.
-- 0–3 local stills per card. One body. Replace still on that card. Extra stills are not extra people.
+- 0–3 local stills per card. One body. Replace still on that card. Frontal portrait stills make the figure find the camera. Prefer a full-body still if you say “costume only.”
 - Two-shots are allowed and flagged. Faces fuse.
 - **Lock seed** on a thumb in Queue, then later plates of that character can reuse it.
 - **Load demo cast** replaces this book’s roster, not a global list.
 
 ## Book
 
-Story wall:
+Story wall. Slug, then the Cast token if a still should attach, then the shot headings. Copy the template on the Book page.
 
 ```
-p1_cargo
-ANDROID
-seen over her left shoulder, hauling a sealed ox-hide crate down a receding cargo bay,
-the crate seams gleaming like liquid silver
+p01_slug
+PILOT
+REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and composition from the reference.
+SHOT: Medium side action shot.
+CAMERA: Where we stand, where we look. Full body / over the shoulder / profile. Both eyes hidden. Does not face the viewer.
+LOCATION: Place, ground, weather or interior. Named objects.
+ACTION: Caught in the instant of [verb].
+GAZE: Eyes on a named thing in the frame, never the viewer.
+HANDS: What both hands are doing.
+MOTION: Body, boots, pack, debris, the beat.
 ```
 
-- Slug on its own line (`p1_cargo`, `t1_one`).
-- Then place + pose + exactly one metaphor. Not a studio. Not square to the camera.
-- Do not paste STYLE, TAIL, sampler, or `aethernouveau` here. The app prepends those.
-- Captions: same slugs, keep newlines, in the **Captions** box. Caption is the moral. Prompt is the camera. Narrator lines in the prompt wall go to the sampler.
+- Slug on its own line (`p01_wreck`, `t1_one`). Two digits so p010 sorts after p001.
+- Token on the next line must match the Cast **Name** exactly if you want that still.
+- Do not paste ink, closer, sampler, or `aethernouveau` here. The app prepends ink and the layout line (and closer if that box is not empty).
+- Hide the eyes. `not looking at the viewer` is often ignored. Name shot size and where we stand.
+- Working verb: **caught in the instant of [verb]**.
+- Captions: same slugs, keep newlines, in the **Captions** box. Caption is the moral. Prompt is the camera.
 - The default book is the demo. It cannot be deleted from the UI.
 - **Parse** before generate. Check the two-shot column.
 - The table header checkbox selects or clears every slug.
-- **Generate selected** uses the checked rows and always queues a new version, even if images already exist. It Parses first. Skip only applies to Generate missing.
-- Assembler order: ink (STYLE), layout line, cast lock, your slug, TAIL. Each chunk is its own sentence. Lock before the camera so the face does not outvote the action.
-- Two-pane comic: one checked row uses the next slug as the right pane. Lock then camera in each pane.
+- **Generate selected** uses the checked rows and always queues a new version. It Parses first. Skip only applies to Generate missing.
+- Assembler order: **ink, layout line, closer (if any), Book wall**. Cast lock and stills sentences are not auto-inserted.
+- Two-pane comic: one checked row uses the next slug as the right pane. Write a full shot on each slug.
 - Default: 2 random seeds per plate.
-- **Copy instructions for your LLM** copies the sheet plus current locks.
+- **Copy instructions for your LLM** copies the shipped sheet plus this book’s locks (as identity notes, not as prompt prefix).
 
-Metaphor examples: spiderweb of black cells; wet silk into teal glass; stained glass; gold leaf over black glass; liquid silver; fire-silk; enamel. Any material metaphor is fine.
+Metaphor examples: spiderweb of black cells; wet silk into teal glass; stained glass; gold leaf over black glass; liquid silver; fire-silk; enamel. Hang a metaphor on a **named object**. Vessels are **spacecraft** — `ship` makes Krea paint boats.
 
 ## Refs
 
 - Off unless **Send character stills** is checked.
-- One still per character named on that plate. Do not add a second ANDROID.
-- If the photo still has a room, that room can become the plate unless cutouts is on.
+- One still per Cast token named on that plate. `PILOT` attaches; `PILOT1` does not.
+- Frontal “look at me” stills clone that pose. Use a full-body costume still.
+- Cutouts: optional checkbox plus editable sentence. Prefer writing REFERENCE on the wall.
 
 ## Queue / Letter
 

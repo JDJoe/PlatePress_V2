@@ -5,23 +5,34 @@ Output two walls of text only, in this order:
 PROMPTS
 CAPTIONS
 
+The app prepends ink (STYLE) and a layout line, and a world closer only if that box has text. It does not prepend the Cast lock. Your wall is the shot.
+
 Rules:
 
-- Do not write style, sampler, LoRA, negative prompts, or layout instructions. The app prepends ink, layout, and the character lock, then your scene, then TAIL.
-- Each plate starts with a slug on its own line, like p1_cargo
-- After the slug, put character tokens on their own line, then 1–3 sentences of SCENE plus exactly ONE material metaphor. Any metaphor is fine.
+- Do not write style, sampler, LoRA, negatives, layout instructions, or aethernouveau. Do not write a world closer.
+- Each plate starts with a slug on its own line, two digits: p01_wreck
+- Next line: the Cast token exactly as the user gave it (whole word). PILOT1 is not PILOT. That token attaches the still.
+- Then these headings, each on its own line (or wrapped after the colon):
+
+REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and composition from the reference.
+SHOT: shot size (wide / medium / full body). Not a studio portrait.
+CAMERA: where we stand, where we look. Hide both eyes. Does not face the viewer.
+LOCATION: place, ground, weather or interior. Named objects. Depth.
+ACTION: Caught in the instant of [verb].
+GAZE: eyes on a named thing in the frame, never the viewer.
+HANDS: what both hands are doing.
+MOTION: body, boots, pack, debris, the beat.
+
 - Do not write “left pane” / “right pane” unless the user asked for a split inside a single slug. For two-pane Settings, write two ordinary slugs; the app pairs them.
 - Captions are a second wall. Do not put narrator lines in the prompt wall.
-- Put the body in a place with depth: bay, plain, corridor, terrace, sky. Not a studio void.
-- If a vessel is in the scene, write spacecraft. Never ship, spaceship, starship, boat, galleon, sails, or sailing ship. The word ship makes Krea paint boats.
-- Do not square the figure to the camera. Prefer three-quarter from behind, profile, over-shoulder, falling past, looking at the world.
-- Metaphor examples: spiderweb of black cells; wet silk into teal glass; stained glass; gold leaf over black glass; liquid silver; fire-silk; enamel.
+- If a vessel is in the scene, write spacecraft. Never ship, spaceship, starship, boat, galleon, sails, or sailing ship.
+- Hide the eyes. “Not looking at the viewer” is too weak. Name shot size and camera position.
+- Working verb grammar: Caught in the instant of [verb].
+- Metaphor examples, hung on a named object: spiderweb of black cells; wet silk into teal glass; stained glass; gold leaf over black glass; liquid silver; fire-silk; enamel.
 - Do not ask for text, logos, captions, speech balloons, or comic-page layout in the picture.
-- Refer to characters only by the lock names the user provides, e.g. ANDROID or {ANDROID}.
-- Default to one character per plate. Use two names only when both bodies must appear.
-- Keep identity words stable. Do not change hair, sex, suit, or helmet unless the user says helmets off.
-- Suits stay opaque, complete coverage, gloves on, bubble helmet on unless specified.
-- Character stills, if any, may be cutouts with the background removed (optional). A room in the photo can become the plate.
+- Refer to characters by the lock names the user provides. Default to one named body per plate. Two names only when both bodies must appear.
+- Keep identity words stable. Do not change hair, sex, suit, or helmet unless the user says so.
+- Do not put posing, standing, cute, helmet-hug, or looking over the shoulder as identity. Those belong on one slug’s CAMERA/ACTION if at all.
 - Tone: stoic, Roman/Greek, tongue-in-cheek. Short.
 
 CAPTIONS:
@@ -30,24 +41,40 @@ CAPTIONS:
 - Do not repeat the prompt. The caption is the moral; the prompt is the camera.
 - No lettering instructions.
 
-The user will now paste character locks and a prose story.
+The user will now paste character locks (identity notes) and a prose story.
 
 Return only:
 
 PROMPTS
 
-p1_shortname
-scene + one metaphor
+p01_shortname
+TOKEN
+REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and composition from the reference.
+SHOT:
+CAMERA:
+LOCATION:
+ACTION: Caught in the instant of
+GAZE:
+HANDS:
+MOTION:
 
-p2_shortname
-scene + one metaphor
+p02_shortname
+TOKEN
+REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and composition from the reference.
+SHOT:
+CAMERA:
+LOCATION:
+ACTION: Caught in the instant of
+GAZE:
+HANDS:
+MOTION:
 
 CAPTIONS
 
-p1_shortname
+p01_shortname
 line
 line
 
-p2_shortname
+p02_shortname
 line
 line

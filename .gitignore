@@ -4,10 +4,15 @@ __pycache__/
 .pytest_cache/
 platepress/settings.json
 platepress/books/
+JUNK/
 SS_*
 PP_untitled*
 /female_android*.png
 /male_cosmon.png
+/PILOT*.png
+/PILOT*.jpg
+/Krea2T__*.png
+SameClouds_prompts.txt
 /captions/
 sweep_05.py
 *.orig

@@ -35,10 +35,14 @@ CLOSER_SPLIT = (
 TAIL = CLOSER_ONE
 
 REF_CUTOUT = (
-    "Character stills are cutouts: background already removed. "
-    "Use only the body, face, and costume. "
+    "Stills are cutouts: background already removed. "
+    "Use only the subject. "
     "Do not use the still's room, window, furniture, sky, or ground. "
-    "Place the figure in the new scene."
+    "Place the subject in the new scene."
+)
+LOCK_POSE = (
+    "Keep the locked look. The lock is how this subject appears, whatever it is. "
+    "Place, action, and camera follow the scene as written."
 )
 ANDROID = (
     "A slim beautiful bald female android with blue eyes, "

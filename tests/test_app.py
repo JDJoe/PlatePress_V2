@@ -11,15 +11,17 @@ from platepress.app import app
 def test_portable_paths_are_repo_relative():
     from platepress import store
 
-    rel = store.portable_path(store.ROOT / "Krea2T_API01.json")
-    assert rel == "Krea2T_API01.json"
-    got = store.resolve_user_path("Krea2T_API01.json")
-    assert got == (store.ROOT / "Krea2T_API01.json").resolve()
+    rel = store.portable_path(store.ROOT / "Krea2T_V3_ref_clean01-API.json")
+    assert rel == "Krea2T_V3_ref_clean01-API.json"
+    got = store.resolve_user_path("Krea2T_V3_ref_clean01-API.json")
+    assert got == (store.ROOT / "Krea2T_V3_ref_clean01-API.json").resolve()
     s = store.default_settings()
     assert not Path(s["workflow_text"]).is_absolute()
     assert not Path(s["output_root"]).is_absolute()
     assert "/home/" not in s["workflow_text"]
     assert "/home/" not in s["output_root"]
+    assert s["ref_cutout"] is False
+    assert "cutouts" in (s.get("ref_cutout_text") or "").lower()
 
 
 def test_ensure_demo_book_seeds_missing_default(tmp_path):
@@ -117,6 +119,32 @@ def test_delete_plates_and_book(tmp_path, monkeypatch):
     r = client.post("/api/book/delete", json={"confirm": True, "id": "default"})
     assert r.status_code == 400
     assert (tmp_path / "books" / "default").is_dir()
+
+
+def test_books_list_keeps_disk_folders_after_restart(tmp_path, monkeypatch):
+    from platepress import store
+
+    monkeypatch.setattr(store, "DEFAULT_SETTINGS_PATH", tmp_path / "settings.json")
+    s = store.default_settings()
+    root = tmp_path / "books"
+    s["output_root"] = str(root)
+    store.save_settings(s, tmp_path / "settings.json")
+    client = TestClient(app)
+    r = client.post("/api/book/new", json={"title": "Same Clouds", "id": "same_clouds"})
+    assert r.status_code == 200
+    assert r.json()["book"]["id"] == "same_clouds"
+    dropped = root / "from_disk"
+    dropped.mkdir()
+    (dropped / "prompts_raw.txt").write_text("p1_one\nscene\n", encoding="utf-8")
+    # New client = app restart; settings.json + folders on disk must still list.
+    restarted = TestClient(app)
+    r = restarted.get("/api/books")
+    assert r.status_code == 200
+    ids = [b["id"] for b in r.json()["books"]]
+    assert "same_clouds" in ids
+    assert "from_disk" in ids
+    assert "default" in ids
+    assert r.json()["current"] == "same_clouds"
 
 
 def test_runs_only_current_book(tmp_path, monkeypatch):
@@ -288,3 +316,5 @@ def test_one_ref_per_character_even_if_card_has_two(tmp_path):
     )
     refs = _refs_for(plate, chars)
     assert refs == [b]
+    plate.named_ids = []
+    assert _refs_for(plate, chars) == []

@@ -172,10 +172,16 @@ def _chars(book: dict[str, Any]) -> list[Character]:
 
 
 def _refs_for(plate, chars: list[Character], names: list[str] | None = None) -> list[Path]:
-    """Exactly one still per character on the plate."""
+    """Exactly one still per character named on the plate. Default lock does not send a still."""
     by = {c.name: c for c in chars}
     paths: list[Path] = []
-    for name in names if names is not None else plate.character_ids:
+    if names is not None:
+        ids = names
+    elif getattr(plate, "named_ids", None) is not None:
+        ids = plate.named_ids
+    else:
+        ids = plate.character_ids
+    for name in ids:
         c = by.get(name)
         if not c:
             continue
@@ -219,6 +225,7 @@ def _parse(book: dict[str, Any], s: dict[str, Any], picture_counts: dict[str, in
         tail=tail,
         n_pictures_for=picture_counts,
         cutout=bool(s.get("ref_cutout")),
+        cutout_text=str(s.get("ref_cutout_text") or ""),
         layout=s.get("layout") or "one",
         layout_text=s.get("layout_text") or "",
     )
@@ -496,6 +503,9 @@ def _split_units(want: list, all_plates: list) -> tuple[list[tuple], int, str]:
 @app.post("/api/generate")
 def post_generate(body: dict[str, Any]) -> dict[str, Any]:
     s = _settings()
+    if "send_refs" in body:
+        s["send_refs"] = bool(body["send_refs"])
+        save_settings(s)
     book = load_book(s)
     chars = _chars(book)
     parsed = _parse(book, s)
@@ -583,10 +593,12 @@ def post_generate(body: dict[str, Any]) -> dict[str, Any]:
                 ls = left.pane_left or (panes[0] if panes else "")
                 rs = left.pane_right or (panes[1] if panes else "")
                 combo = pad_slug(left.slug)
-                ids_l = left.pane_left_ids or left.character_ids
-                ids_r = left.pane_right_ids
-                locks_l = [by[n].lock_text for n in ids_l if n in by]
-                locks_r = [by[n].lock_text for n in ids_r if n in by]
+                ids_l = list(left.pane_left_ids or left.named_ids or [])
+                ids_r = list(left.pane_right_ids or [])
+                lock_ids_l = ids_l or list(left.character_ids or [])
+                lock_ids_r = ids_r
+                locks_l = [by[n].lock_text for n in lock_ids_l if n in by]
+                locks_r = [by[n].lock_text for n in lock_ids_r if n in by]
                 left_scene, right_scene = ls, rs
                 refs_l = _refs_for(left, chars, ids_l) if (send_refs and ref_wf.exists()) else []
                 refs_r = _refs_for(left, chars, ids_r) if (send_refs and ref_wf.exists() and ids_r) else []
@@ -613,6 +625,7 @@ def post_generate(body: dict[str, Any]) -> dict[str, Any]:
                 n_left_refs=min(1, len(refs_l)),
                 n_right_refs=min(1, len(refs_r)),
                 cutout=bool(s.get("ref_cutout")),
+                cutout_text=str(s.get("ref_cutout_text") or ""),
             )
             job_slug = combo
             seed_from = left
@@ -628,9 +641,12 @@ def post_generate(body: dict[str, Any]) -> dict[str, Any]:
                 book.get("style") or s["style"],
                 locks,
                 p.scene_text,
-                book.get("tail") or s["tail"],
+                book.get("tail") or s["tail"] or "",
                 n_pictures=len(refs),
                 cutout=bool(s.get("ref_cutout")),
+                cutout_text=str(s.get("ref_cutout_text") or ""),
+                layout=s.get("layout") or "one",
+                layout_text=s.get("layout_text") or "",
             )
             job_slug = p.slug
             seed_from = p

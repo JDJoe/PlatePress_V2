@@ -17,6 +17,7 @@ from .defaults import (
     LORA_STRENGTH,
     NEG,
     PER_PROMPT,
+    REF_CUTOUT,
     STYLE,
     TAIL,
     neg_for,
@@ -93,8 +94,8 @@ def default_settings() -> dict[str, Any]:
         "host": "127.0.0.1",
         "port": 8188,
         "app_port": 7860,
-        "workflow_text": "Krea2T_API01.json",
-        "workflow_ref": "Krea2T_V2_ref_API.json",
+        "workflow_text": "Krea2T_V3_ref_clean01-API.json",
+        "workflow_ref": "Krea2T_V3_ref_clean01-API.json",
         "lora_name": LORA,
         "lora_strength": LORA_STRENGTH,
         "style": STYLE,
@@ -111,7 +112,8 @@ def default_settings() -> dict[str, Any]:
         "scheduler": "beta",
         "job_timeout_s": 600,
         "send_refs": False,
-        "ref_cutout": True,
+        "ref_cutout": False,
+        "ref_cutout_text": REF_CUTOUT,
     }
 
 
@@ -124,6 +126,8 @@ def load_settings(path: Path | None = None) -> dict[str, Any]:
         except json.JSONDecodeError:
             pass
     s = migrate_layout(base)
+    if not str(s.get("ref_cutout_text") or "").strip():
+        s["ref_cutout_text"] = REF_CUTOUT
     for key in _PATH_KEYS:
         if s.get(key):
             s[key] = str(resolve_user_path(str(s[key])))
@@ -269,20 +273,20 @@ def list_books(settings: dict[str, Any]) -> list[dict[str, Any]]:
         if not d.is_dir() or d.name.startswith("."):
             continue
         title = d.name
-        bj = d / "book.json"
-        if bj.exists():
-            try:
-                title = json.loads(bj.read_text(encoding="utf-8")).get("title") or d.name
-            except json.JSONDecodeError:
-                pass
         n = 0
-        plates = d / "plates"
-        if plates.exists():
-            n = sum(
-                1
-                for p in plates.iterdir()
-                if p.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}
-            )
+        try:
+            bj = d / "book.json"
+            if bj.is_file():
+                title = json.loads(bj.read_text(encoding="utf-8")).get("title") or d.name
+            plates = d / "plates"
+            if plates.is_dir():
+                n = sum(
+                    1
+                    for p in plates.iterdir()
+                    if p.is_file() and p.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}
+                )
+        except (json.JSONDecodeError, OSError, UnicodeDecodeError, TypeError, AttributeError):
+            title = d.name
         out.append({
             "id": d.name,
             "title": title,

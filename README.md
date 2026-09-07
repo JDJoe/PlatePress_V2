@@ -1,6 +1,6 @@
 # Plate Press
 
-Local ComfyUI picture-novel press. One book open at a time. You lock ink in Settings, lock people in Cast, paste a scene wall in Book, queue plates through Comfy, then letter captions under the pictures.
+Local ComfyUI picture-novel press. One book open at a time. You lock ink and layout in Settings, people and stills in Cast, paste a labeled shot wall in Book, queue plates through Comfy, then letter captions under the pictures.
 
 This app does **not** download the ~26 GB Krea2 Turbo checkpoint. ComfyUI must already be running.
 
@@ -13,8 +13,7 @@ Pages: **Settings** · **Cast** · **Book** · **Queue / Letter** · **Help**. O
 - Krea2 **Turbo** (`KREA2/krea2_turbo_bf16.safetensors` or the path already in your graph)
 - The LoRA currently in your graph (swap it in Settings; it is not bundled)
 - API workflow JSON (ComfyUI → **Save (API Format)**):
-  - text-only: `Krea2T_API01.json`
-  - with character stills: `Krea2T_V2_ref_API.json`
+  - `Krea2T_V3_ref_clean01-API.json` (text and stills; unused LoadImage nodes are dropped)
 
 ## Install
 
@@ -29,7 +28,7 @@ python -m platepress.app
 
 Open `http://127.0.0.1:7860`. Settings → **Test connection**.
 
-Paths in settings are relative to the clone (or `~/…`). First run writes `platepress/settings.json` locally (gitignored). Workflows `Krea2T_API01.json` and `Krea2T_V2_ref_API.json` ship in the repo root.
+Paths in settings are relative to the clone (or `~/…`). First run writes `platepress/settings.json` locally (gitignored). Workflow `Krea2T_V3_ref_clean01-API.json` ships in the repo root (UI twin: `Krea2T_V3_ref_clean01.json`).
 
 Books live as folders under `platepress/books/<id>/` (JSON, walls, stills, plates). That folder is gitignored so Maid2 and other live books stay on your machine. The **Bos Sidereal** demo is shipped in `platepress/demo/bos/` (story, captions, ANDROID and AUGUR stills). If `books/default` is missing, the app copies the demo there. The default book cannot be deleted from the UI. Generate plates locally; they are not in the repo.
 
@@ -46,7 +45,7 @@ Ink, closer, negatives, LoRA, Comfy host, and **Send character stills** apply to
 
 There is no separate Plate layout radio. The card *is* the mode.
 
-**Send character stills** is off unless you check it. Off = text locks only (text workflow). On = first still → `image1`, second → `image2`; the prompt says `use imageN as reference`. Optional: stills are cutouts.
+**Send character stills** is off unless you check it. On: if the slug names a Cast token and that card has a still, the file is `image1` (second named body → `image2`). Write `REFERENCE: use picture1…` on the Book wall; the app does not add that sentence. No still on the card → no image; unused LoadImage nodes are dropped. **Stills are cutouts** is off unless you check it; the sentence is editable and is not auto-inserted into the prompt.
 
 Factory sampler (leave it unless you mean it): 8 steps, CFG 1, euler, beta. LoRA filename is a setting, not the product.
 
@@ -54,36 +53,42 @@ Factory sampler (leave it unless you mean it): 8 steps, CFG 1, euler, beta. LoRA
 
 Each book has its own roster. Five books can all have **ANDROID**; they are five different people.
 
-- **Name** is the token in the story wall: `ANDROID` or `{ANDROID}`.
-- **Lock** is the identity sentence. Whatever you write here is stuffed into every plate that names that character. A spacesuit lock will beat a gilt-chair scene.
+- **Name** is the token in the story wall: `PILOT` or `{PILOT}`. Whole word only — `PILOT1` does not match `PILOT`, and the still will not attach.
+- **Lock** is face + suit + pack for you and for the LLM sheet. The app does **not** paste it into the Comfy prompt. Put look, costume, and `picture1` on the Book wall. Do not put posing, standing, or helmet-hug in the lock.
 - A name like `PATRON` only does something if that card exists on this book.
-- 0–3 local stills per card. One body. Replace still on that card. Two-shots are flagged; faces fuse.
+- 0–3 local stills per card. One body. Frontal portrait stills make the figure find the camera. Two-shots are flagged; faces fuse.
 - **Lock seed** on a Queue thumb to reuse that seed later.
 
 **Load demo cast** replaces *this* book’s roster, not a global list.
 
 ## Book
 
-Two walls. Slug on its own line (`p1_cargo`, `t1_one`). Then place + pose + **one** material metaphor. Put the token on its own line after the slug.
+Two walls. Slug on its own line (`p01_wreck`). Next line is the Cast token if a still should attach. Then the shot headings. The Book page has a copyable template.
 
 ```
-p1_cargo
-ANDROID
-seen over her left shoulder, hauling a sealed ox-hide crate down a receding cargo bay,
-the crate seams gleaming like liquid silver
+p01_slug
+PILOT
+REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and composition from the reference.
+SHOT: Medium side action shot.
+CAMERA: Where we stand, where we look. Both eyes hidden. Does not face the viewer.
+LOCATION: Place, ground, weather or interior.
+ACTION: Caught in the instant of [verb].
+GAZE: Eyes on a named thing in the frame, never the viewer.
+HANDS: What both hands are doing.
+MOTION: Body, boots, pack, debris, the beat.
 ```
 
-Captions use the same slugs and keep newlines. Caption is the moral; prompt is the camera. Do not paste captions into the prompt wall. Do not paste STYLE, TAIL, sampler, or `aethernouveau`.
+Captions use the same slugs and keep newlines. Caption is the moral; prompt is the camera. Do not paste captions into the prompt wall. Do not paste ink, closer, sampler, or `aethernouveau`.
 
 **Parse** before you generate. The table header checkbox selects or clears every slug. **Generate selected** uses the checked rows and always queues a **new version**, even if this book already has plates. It Parses first. **Generate missing** honors skip. **Generate all** does every plate. Default: 2 seeds per plate (`batch_size = 1` in the graph).
 
-The app assembles each plate as **ink (STYLE), layout line, cast lock, your slug, TAIL**. Each chunk is its own sentence. Lock comes before the camera so the face does not outvote the action.
+The app assembles each plate as **ink, layout line, closer (if that box has text), Book wall**. Cast lock and stills sentences are not auto-inserted. Hide the eyes. Working verb: **caught in the instant of [verb]**.
 
-Two-pane: one checked row uses the next slug as the right pane. Lock then camera in each pane.
+Two-pane: one checked row uses the next slug as the right pane. Write a full shot on each slug.
 
-**Copy instructions for your LLM** copies the shipped sheet plus this book’s locks.
+**Copy instructions for your LLM** copies the shipped sheet plus this book’s locks (identity notes, not prompt prefix).
 
-Metaphor examples: spiderweb of black cells; wet silk into teal glass; stained glass; gold leaf over black glass; liquid silver; fire-silk; enamel. Any material metaphor is fine. Vessels are **spacecraft** — `ship` makes Krea paint boats.
+Metaphor examples: spiderweb of black cells; wet silk into teal glass; stained glass; gold leaf over black glass; liquid silver; fire-silk; enamel. Hang a metaphor on a named object. Vessels are **spacecraft** — `ship` makes Krea paint boats.
 
 ## Queue / Letter
 
@@ -109,8 +114,8 @@ Reroll = new seed, same prompt (a new version). Delete one file, earlier version
 - Do not change identity words mid-book.
 - Opaque coverage in the lock if you want clothes on.
 
-More detail: `HELP.md` (same text as the in-app **Help** tab). The original V2 implementation notes live in `PLATEPRESS_V2_SPEC.md` and may lag the running app.
+More detail: `HELP.md` (same topics as the in-app **Help** tab). Same Clouds camera notes: `KREA2_TURBO_PLATE_NOTES.md`. The original V2 implementation notes live in `PLATEPRESS_V2_SPEC.md` and may lag the running app.
 
 ## GitHub
 
-`platepress/books/` and `platepress/settings.json` are gitignored. Commit the demo under `platepress/demo/bos/`, not your live books. Do not commit screenshots or Comfy dumps at the repo root.
+`platepress/books/`, `platepress/settings.json`, and `JUNK/` are gitignored. Commit the demo under `platepress/demo/bos/`, not your live books. Do not commit screenshots or Comfy dumps at the repo root.

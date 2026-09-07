@@ -1,32 +1,24 @@
 {
   "2": {
     "inputs": {
-      "prompt": "",
+      "prompt": "Style: aethernouveau. Ink and watercolor by Moebius, thin black outlines, muted ochre, rust, teal and black. Cream paper is the print stock, not the sky. vintage sci-fi comic art style, detailed linework, muted colors.\n\nLocation: Interior of a small spacecraft bridge in orbit. Dark consoles, warning lights, a wide forward window showing black cosmos and a planet far below. Metal floor, loose tools in mid-air.\n\nCharacters: pilot1 - a female pilot, use picture1 for costume only. Ignore background and objects. Short samurai sword in both hands.\nSecond figure: unknown man, only a dark silhouette near the far hatch, no face, no detail.\n\nCamera: Wide shot from behind and slightly to the left of pilot1, over her shoulder. Full body in frame. We see her back, pack, and sword. Only the edge of one cheek is visible. Both eyes hidden. She does not face the viewer.\n\nAction: Caught in the instant she wrenches the short samurai sword sideways through a standing wrinkle in the air in front of her. The blade stretches the wrinkle open. It does not hit the silhouette. Her body twists with the cut, one boot sliding back on the deck. Head and eyes locked on the tear. Teal glass fractures outward from the blade. A cloudy ochre-and-blue sky is visible inside the opening. Warning lights flare. Loose objects fly sideways.\n\n",
       "clip": [
         "7",
         1
       ],
-      "vae": [
-        "6",
-        0
-      ],
       "image1": [
-        "16",
-        0
-      ],
-      "image2": [
-        "17",
+        "11",
         0
       ]
     },
     "class_type": "TextEncodeQwenImageEditPlus",
     "_meta": {
-      "title": "Prompt + character refs"
+      "title": "Prompt + Picture 1/2/3 (no VAE)"
     }
   },
   "3": {
     "inputs": {
-      "text": "",
+      "text": "watermark, signature, logo, readable letters, captions, speech balloons, blurry, bad anatomy, deformed hands, extra fingers, fused fingers, plastic skin, overexposed, underexposed, empty white background, blank paper void",
       "clip": [
         "7",
         1
@@ -34,7 +26,7 @@
     },
     "class_type": "CLIPTextEncode",
     "_meta": {
-      "title": "CLIP Text Encode (Prompt - )"
+      "title": "Negative"
     }
   },
   "4": {
@@ -69,7 +61,7 @@
   },
   "7": {
     "inputs": {
-      "lora_01": "Krea2-aethernouveau-04/Krea2-aethernouveau-04_merged.safetensors",
+      "lora_01": "Krea2-aethernouveau-03/Krea2-aethernouveau-03_merged.safetensors",
       "strength_01": 0.8,
       "lora_02": "None",
       "strength_02": 0,
@@ -93,7 +85,7 @@
   },
   "8": {
     "inputs": {
-      "seed": 0,
+      "seed": 994237676845353,
       "steps": 8,
       "cfg": 1,
       "sampler_name": "euler",
@@ -104,7 +96,7 @@
         0
       ],
       "positive": [
-        "19",
+        "2",
         0
       ],
       "negative": [
@@ -112,7 +104,7 @@
         0
       ],
       "latent_image": [
-        "15",
+        "10",
         0
       ]
     },
@@ -139,6 +131,44 @@
   },
   "10": {
     "inputs": {
+      "width": 1024,
+      "height": 1024,
+      "batch_size": 1
+    },
+    "class_type": "EmptySD3LatentImage",
+    "_meta": {
+      "title": "EmptySD3LatentImage"
+    }
+  },
+  "11": {
+    "inputs": {
+      "image": "8445e882-4615-480b-9387-6d502b3c8973.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Picture 1 — identity"
+    }
+  },
+  "12": {
+    "inputs": {
+      "image": "example.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Picture 2 — optional"
+    }
+  },
+  "13": {
+    "inputs": {
+      "image": "example.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Picture 3 — optional"
+    }
+  },
+  "14": {
+    "inputs": {
       "filename_prefix": "Krea2T_",
       "images": [
         "9",
@@ -150,67 +180,16 @@
       "title": "Save Image"
     }
   },
-  "11": {
+  "15": {
     "inputs": {
       "images": [
-        "10",
+        "14",
         0
       ]
     },
     "class_type": "PreviewImage",
     "_meta": {
       "title": "Preview Image"
-    }
-  },
-  "15": {
-    "inputs": {
-      "width": 1024,
-      "height": 1024,
-      "batch_size": 1
-    },
-    "class_type": "EmptySD3LatentImage",
-    "_meta": {
-      "title": "EmptySD3LatentImage"
-    }
-  },
-  "16": {
-    "inputs": {
-      "image": "example.png"
-    },
-    "class_type": "LoadImage",
-    "_meta": {
-      "title": "Character ref 1"
-    }
-  },
-  "17": {
-    "inputs": {
-      "image": "example.png"
-    },
-    "class_type": "LoadImage",
-    "_meta": {
-      "title": "Character ref 2 (wire to image2)"
-    }
-  },
-  "18": {
-    "inputs": {
-      "image": "example.png"
-    },
-    "class_type": "LoadImage",
-    "_meta": {
-      "title": "Character ref 3 (wire to image3)"
-    }
-  },
-  "19": {
-    "inputs": {
-      "reference_latents_method": "index_timestep_zero",
-      "conditioning": [
-        "2",
-        0
-      ]
-    },
-    "class_type": "FluxKontextMultiReferenceLatentMethod",
-    "_meta": {
-      "title": "Ref latents method"
     }
   }
 }

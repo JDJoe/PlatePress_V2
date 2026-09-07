@@ -1,0 +1,865 @@
+{
+  "id": "krea2t-v3-ref-clean",
+  "revision": 0,
+  "last_node_id": 15,
+  "last_link_id": 15,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "MarkdownNote",
+      "pos": [
+        -1280,
+        40
+      ],
+      "size": [
+        420,
+        520
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "Krea2 Turbo refs — clean",
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.8",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "**Same files as before.**\n\nUNET `KREA2/krea2_turbo_bf16.safetensors`\nCLIP `qwen3vl_4b_fp8_scaled.safetensors` type `krea2`\nVAE `qwen-image/qwen_image_vae.safetensors`\nLoRA `#7` slot 1 `Krea2-aethernouveau-03_merged` @ 0.80\n\n**What changed vs the broken graph**\n- `#2` `TextEncodeQwenImageEditPlus` has **no VAE**. VAE is decode-only (`#6` → `#9`).\n- **No** `FluxKontextMultiReferenceLatentMethod`. That packer + VAE latents is what rasterized after the Comfy update. Stock Krea2 Turbo has no reference-latent slot.\n- Refs enter as Qwen3-VL `Picture N` tokens only.\n\n**Use**\n1. Load stills into `#11` `#12` `#13`. Leave a Load Image empty / unhooked if unused.\n2. Name them in the `#2` prompt: `Picture 1`, `Picture 2`, `Picture 3`.\n3. Identity: *the woman from Picture 1*. Style: *in the line and wash of Picture 2*. Do not dump a frontal beauty headshot if you want an action plate.\n4. `#10` batch defaults to **1**. Raise later.\n\nOptional later: `#7` slot 2 `krea2_style_reference.safetensors` @ 0.7 if you have it."
+      ],
+      "widgets_values_named": {
+        "text": "**Same files as before.**\n\nUNET `KREA2/krea2_turbo_bf16.safetensors`\nCLIP `qwen3vl_4b_fp8_scaled.safetensors` type `krea2`\nVAE `qwen-image/qwen_image_vae.safetensors`\nLoRA `#7` slot 1 `Krea2-aethernouveau-03_merged` @ 0.80\n\n**What changed vs the broken graph**\n- `#2` `TextEncodeQwenImageEditPlus` has **no VAE**. VAE is decode-only (`#6` → `#9`).\n- **No** `FluxKontextMultiReferenceLatentMethod`. That packer + VAE latents is what rasterized after the Comfy update. Stock Krea2 Turbo has no reference-latent slot.\n- Refs enter as Qwen3-VL `Picture N` tokens only.\n\n**Use**\n1. Load stills into `#11` `#12` `#13`. Leave a Load Image empty / unhooked if unused.\n2. Name them in the `#2` prompt: `Picture 1`, `Picture 2`, `Picture 3`.\n3. Identity: *the woman from Picture 1*. Style: *in the line and wash of Picture 2*. Do not dump a frontal beauty headshot if you want an action plate.\n4. `#10` batch defaults to **1**. Raise later.\n\nOptional later: `#7` slot 2 `krea2_style_reference.safetensors` @ 0.7 if you have it."
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 2,
+      "type": "TextEncodeQwenImageEditPlus",
+      "pos": [
+        -406.54405395507814,
+        489.11205139160165
+      ],
+      "size": [
+        551.944,
+        407.77600000000007
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 4
+        },
+        {
+          "name": "vae",
+          "shape": 7,
+          "type": "VAE",
+          "link": null
+        },
+        {
+          "name": "image1",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 11
+        },
+        {
+          "name": "image2",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image3",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            6
+          ]
+        }
+      ],
+      "title": "Prompt + Picture 1/2/3 (no VAE)",
+      "properties": {
+        "Node name for S&R": "TextEncodeQwenImageEditPlus",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.8",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "Style: aethernouveau. Ink and watercolor by Moebius, thin black outlines, muted ochre, rust, teal and black. Cream paper is the print stock, not the sky. vintage sci-fi comic art style, detailed linework, muted colors.\n\nLocation: Interior of a small spacecraft bridge in orbit. Dark consoles, warning lights, a wide forward window showing black cosmos and a planet far below. Metal floor, loose tools in mid-air.\n\nCharacters: pilot1 - a female pilot, use picture1 for costume only. Ignore background and objects. Short samurai sword in both hands.\nSecond figure: unknown man, only a dark silhouette near the far hatch, no face, no detail.\n\nCamera: Wide shot from behind and slightly to the left of pilot1, over her shoulder. Full body in frame. We see her back, pack, and sword. Only the edge of one cheek is visible. Both eyes hidden. She does not face the viewer.\n\nAction: Caught in the instant she wrenches the short samurai sword sideways through a standing wrinkle in the air in front of her. The blade stretches the wrinkle open. It does not hit the silhouette. Her body twists with the cut, one boot sliding back on the deck. Head and eyes locked on the tear. Teal glass fractures outward from the blade. A cloudy ochre-and-blue sky is visible inside the opening. Warning lights flare. Loose objects fly sideways.\n\n"
+      ],
+      "widgets_values_named": {
+        "prompt": "Style: aethernouveau. Ink and watercolor by Moebius, thin black outlines, muted ochre, rust, teal and black. Cream paper is the print stock, not the sky. vintage sci-fi comic art style, detailed linework, muted colors.\n\nLocation: Interior of a small spacecraft bridge in orbit. Dark consoles, warning lights, a wide forward window showing black cosmos and a planet far below. Metal floor, loose tools in mid-air.\n\nCharacters: pilot1 - a female pilot, use picture1 for costume only. Ignore background and objects. Short samurai sword in both hands.\nSecond figure: unknown man, only a dark silhouette near the far hatch, no face, no detail.\n\nCamera: Wide shot from behind and slightly to the left of pilot1, over her shoulder. Full body in frame. We see her back, pack, and sword. Only the edge of one cheek is visible. Both eyes hidden. She does not face the viewer.\n\nAction: Caught in the instant she wrenches the short samurai sword sideways through a standing wrinkle in the air in front of her. The blade stretches the wrinkle open. It does not hit the silhouette. Her body twists with the cut, one boot sliding back on the deck. Head and eyes locked on the tear. Teal glass fractures outward from the blade. A cloudy ochre-and-blue sky is visible inside the opening. Warning lights flare. Loose objects fly sideways.\n\n"
+      }
+    },
+    {
+      "id": 3,
+      "type": "CLIPTextEncode",
+      "pos": [
+        203.5140544677734,
+        458.84080000000023
+      ],
+      "size": [
+        400,
+        200
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 5
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            7
+          ]
+        }
+      ],
+      "title": "Negative",
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.8",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "watermark, signature, logo, readable letters, captions, speech balloons, blurry, bad anatomy, deformed hands, extra fingers, fused fingers, plastic skin, overexposed, underexposed, empty white background, blank paper void"
+      ],
+      "widgets_values_named": {
+        "text": "watermark, signature, logo, readable letters, captions, speech balloons, blurry, bad anatomy, deformed hands, extra fingers, fused fingers, plastic skin, overexposed, underexposed, empty white background, blank paper void"
+      }
+    },
+    {
+      "id": 4,
+      "type": "UNETLoader",
+      "pos": [
+        -780,
+        40
+      ],
+      "size": [
+        380,
+        82
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            1
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "UNETLoader",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.8",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "KREA2/krea2_turbo_bf16.safetensors",
+        "default"
+      ],
+      "widgets_values_named": {
+        "unet_name": "KREA2/krea2_turbo_bf16.safetensors",
+        "weight_dtype": "default"
+      },
+      "ndSuperSelectorEnabled": false,
+      "ndPowerEnabled": false
+    },
+    {
+      "id": 5,
+      "type": "CLIPLoader",
+      "pos": [
+        -780,
+        160
+      ],
+      "size": [
+        380,
+        106
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            2
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPLoader",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.8",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "qwen3vl_4b_fp8_scaled.safetensors",
+        "krea2",
+        "default"
+      ],
+      "widgets_values_named": {
+        "clip_name": "qwen3vl_4b_fp8_scaled.safetensors",
+        "type": "krea2",
+        "device": "default"
+      },
+      "ndSuperSelectorEnabled": false,
+      "ndPowerEnabled": false
+    },
+    {
+      "id": 6,
+      "type": "VAELoader",
+      "pos": [
+        -780,
+        310
+      ],
+      "size": [
+        380,
+        58
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            9
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAELoader",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.8",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "qwen-image/qwen_image_vae.safetensors"
+      ],
+      "widgets_values_named": {
+        "vae_name": "qwen-image/qwen_image_vae.safetensors"
+      },
+      "ndSuperSelectorEnabled": false,
+      "ndPowerEnabled": false
+    },
+    {
+      "id": 7,
+      "type": "Lora Loader Stack (rgthree)",
+      "pos": [
+        -359.9999999999999,
+        -5.679893191528334
+      ],
+      "size": [
+        420,
+        250
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 1
+        },
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 2
+        }
+      ],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            3
+          ]
+        },
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            4,
+            5
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Lora Loader Stack (rgthree)",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.8",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "Krea2-aethernouveau-03/Krea2-aethernouveau-03_merged.safetensors",
+        0.8,
+        "None",
+        0,
+        "None",
+        0,
+        "None",
+        0
+      ],
+      "widgets_values_named": {
+        "lora_01": "Krea2-aethernouveau-03/Krea2-aethernouveau-03_merged.safetensors",
+        "strength_01": 0.8,
+        "lora_02": "None",
+        "strength_02": 0,
+        "lora_03": "None",
+        "strength_03": 0,
+        "lora_04": "None",
+        "strength_04": 0
+      },
+      "ndSuperSelectorEnabled": false,
+      "ndPowerEnabled": false
+    },
+    {
+      "id": 8,
+      "type": "KSampler",
+      "pos": [
+        514.055324255371,
+        -43.16090680847164
+      ],
+      "size": [
+        280,
+        262
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 3
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 6
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 7
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 8
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            10
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.8",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        994237676845353,
+        "randomize",
+        8,
+        1,
+        "euler",
+        "beta",
+        1
+      ],
+      "widgets_values_named": {
+        "seed": 994237676845353,
+        "control_after_generate": "randomize",
+        "steps": 8,
+        "cfg": 1,
+        "sampler_name": "euler",
+        "scheduler": "beta",
+        "denoise": 1
+      }
+    },
+    {
+      "id": 9,
+      "type": "VAEDecode",
+      "pos": [
+        820,
+        40
+      ],
+      "size": [
+        210,
+        50
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 10
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 9
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            14
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.8",
+          "input_ue_unconnectable": {}
+        }
+      }
+    },
+    {
+      "id": 10,
+      "type": "EmptySD3LatentImage",
+      "pos": [
+        117.54177004272461,
+        34.32959497863754
+      ],
+      "size": [
+        270,
+        106
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            8
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "EmptySD3LatentImage",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.8",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        1024,
+        1024,
+        1
+      ],
+      "widgets_values_named": {
+        "width": 1024,
+        "height": 1024,
+        "batch_size": 1
+      }
+    },
+    {
+      "id": 11,
+      "type": "LoadImage",
+      "pos": [
+        -772.0903918762209,
+        447.00630587491133
+      ],
+      "size": [
+        320,
+        340
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            11
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "title": "Picture 1 — identity",
+      "properties": {
+        "Node name for S&R": "LoadImage",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.8",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "8445e882-4615-480b-9387-6d502b3c8973.png",
+        "image"
+      ],
+      "widgets_values_named": {
+        "image": "8445e882-4615-480b-9387-6d502b3c8973.png",
+        "upload": "image"
+      }
+    },
+    {
+      "id": 12,
+      "type": "LoadImage",
+      "pos": [
+        -790.0945137329098,
+        875.7831350097656
+      ],
+      "size": [
+        320,
+        340
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": []
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "title": "Picture 2 — optional",
+      "properties": {
+        "Node name for S&R": "LoadImage",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.8",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "example.png",
+        "image"
+      ],
+      "widgets_values_named": {
+        "image": "example.png",
+        "upload": "image"
+      }
+    },
+    {
+      "id": 13,
+      "type": "LoadImage",
+      "pos": [
+        -1165.871297485351,
+        871.5239187622071
+      ],
+      "size": [
+        320,
+        340
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": []
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "title": "Picture 3 — optional",
+      "properties": {
+        "Node name for S&R": "LoadImage",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.8",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "example.png",
+        "image"
+      ],
+      "widgets_values_named": {
+        "image": "example.png",
+        "upload": "image"
+      }
+    },
+    {
+      "id": 14,
+      "type": "SaveImage",
+      "pos": [
+        215.86016166381825,
+        746.0563883404542
+      ],
+      "size": [
+        400,
+        360
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 14
+        }
+      ],
+      "outputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "links": [
+            15
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SaveImage",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.8",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "Krea2T_"
+      ],
+      "widgets_values_named": {
+        "filename_prefix": "Krea2T_"
+      }
+    },
+    {
+      "id": 15,
+      "type": "PreviewImage",
+      "pos": [
+        668.3694884399997,
+        406.09421256114445
+      ],
+      "size": [
+        400,
+        360
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 15
+        }
+      ],
+      "outputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PreviewImage",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.8",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [],
+      "widgets_values_named": {}
+    }
+  ],
+  "links": [
+    [
+      1,
+      4,
+      0,
+      7,
+      0,
+      "MODEL"
+    ],
+    [
+      2,
+      5,
+      0,
+      7,
+      1,
+      "CLIP"
+    ],
+    [
+      3,
+      7,
+      0,
+      8,
+      0,
+      "MODEL"
+    ],
+    [
+      4,
+      7,
+      1,
+      2,
+      0,
+      "CLIP"
+    ],
+    [
+      5,
+      7,
+      1,
+      3,
+      0,
+      "CLIP"
+    ],
+    [
+      6,
+      2,
+      0,
+      8,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      7,
+      3,
+      0,
+      8,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      8,
+      10,
+      0,
+      8,
+      3,
+      "LATENT"
+    ],
+    [
+      9,
+      6,
+      0,
+      9,
+      1,
+      "VAE"
+    ],
+    [
+      10,
+      8,
+      0,
+      9,
+      0,
+      "LATENT"
+    ],
+    [
+      11,
+      11,
+      0,
+      2,
+      2,
+      "IMAGE"
+    ],
+    [
+      14,
+      9,
+      0,
+      14,
+      0,
+      "IMAGE"
+    ],
+    [
+      15,
+      14,
+      0,
+      15,
+      0,
+      "IMAGE"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 1.3310000000000004,
+      "offset": [
+        868.4729436447321,
+        -99.01236222350187
+      ]
+    },
+    "frontendVersion": "1.51.9",
+    "ue_links": [],
+    "links_added_by_ue": [],
+    "VHS_latentpreview": false,
+    "VHS_latentpreviewrate": 0,
+    "VHS_MetadataImage": true,
+    "VHS_KeepIntermediate": true
+  },
+  "version": 0.4
+}

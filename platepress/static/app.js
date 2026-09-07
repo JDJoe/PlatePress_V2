@@ -50,7 +50,8 @@ document.querySelectorAll("nav button").forEach((b) => {
 
 const SET_KEYS = [
   "host", "port", "workflow_text", "workflow_ref", "lora_name", "lora_strength",
-  "style", "layout", "layout_text", "tail", "neg", "images_per_plate", "output_root",
+  "style", "layout", "layout_text", "tail", "neg", "ref_cutout_text",
+  "images_per_plate", "output_root",
   "steps", "cfg", "sampler_name", "scheduler",
 ];
 
@@ -66,8 +67,9 @@ function updateAssemblePreview() {
     ($("layout_text") && $("layout_text").value.trim()) || "",
     layoutValue() === "split"
       ? "Left pane: (first slug). Right pane: (next slug)."
-      : "(one image per slug; left/right in a slug still splits that plate only)",
+      : "",
     ($("tail") && $("tail").value.trim()) || "",
+    "(Book wall)",
   ].filter(Boolean);
   box.textContent = bits.join(" ");
 }
@@ -121,7 +123,7 @@ function fillSettings(s) {
   const sr = $("send_refs");
   if (sr) sr.checked = !!s.send_refs;
   const rc = $("ref_cutout");
-  if (rc) rc.checked = s.ref_cutout !== false;
+  if (rc) rc.checked = !!s.ref_cutout;
   if ($("layout")) $("layout").value = s.layout || "one";
   renderExamples(s.examples);
   updateAssemblePreview();
@@ -586,7 +588,10 @@ async function generate(mode) {
   const btn = mode === "sel" ? $("gen-sel") : mode === "all" ? $("gen-all") : $("gen-missing");
   try {
     await saveBookSilent();
-    const body = { skip_done: $("skip_done").checked };
+    const body = {
+      skip_done: $("skip_done").checked,
+      send_refs: !!($("send_refs") && $("send_refs").checked),
+    };
     if (mode === "all") body.skip_done = false;
     if (mode === "sel") {
       const picked = selectedSlugs();
@@ -628,13 +633,34 @@ async function generate(mode) {
   }
 }
 
-["style", "layout_text", "tail"].forEach((id) => {
+["style", "layout_text", "tail", "ref_cutout_text"].forEach((id) => {
   const el = $(id);
   if (el) el.addEventListener("input", () => {
     markActiveExample();
     updateAssemblePreview();
   });
 });
+if ($("ref_cutout")) {
+  $("ref_cutout").addEventListener("change", updateAssemblePreview);
+}
+if ($("send_refs")) {
+  $("send_refs").addEventListener("change", async () => {
+    try {
+      settings = await j("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(readSettings()),
+      });
+      fillSettings(settings);
+      showBanner(
+        settings.send_refs ? "stills ON — Qwen will copy pose and backdrop" : "stills off — text locks only",
+        settings.send_refs ? "warn" : "ok"
+      );
+    } catch (e) {
+      showBanner(e.message, "err");
+    }
+  });
+}
 $("save-settings").onclick = async () => {
   settings = await j("/api/settings", {
     method: "POST",
@@ -643,6 +669,7 @@ $("save-settings").onclick = async () => {
   });
   fillSettings(settings);
   showBanner("settings saved", "ok");
+  loadBooks();
 };
 $("test-comfy").onclick = async () => {
   const r = await j("/api/comfy/test");
@@ -769,11 +796,24 @@ async function startNewBook() {
 document.querySelectorAll(".js-new-book").forEach((el) => {
   el.onclick = startNewBook;
 });
+if ($("copy-plate-template")) {
+  $("copy-plate-template").onclick = async () => {
+    const pre = $("plate-template");
+    const text = pre ? pre.textContent : "";
+    try {
+      await navigator.clipboard.writeText(text);
+      showBanner("plate template copied", "ok");
+    } catch (e) {
+      showBanner(e.message, "err");
+    }
+  };
+}
 
 (async function init() {
   try {
     fillSettings(await j("/api/settings"));
     await loadBook();
+    await loadBooks();
     const ping = await j("/api/comfy/test");
     showBanner(ping.message, ping.ok ? "ok" : "err");
   } catch (e) {

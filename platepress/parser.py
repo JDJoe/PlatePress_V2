@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-from .defaults import CLOSER_SPLIT, LAYOUT_ONE, LAYOUT_SPLIT, METAPHORS, REF_CUTOUT, STYLE, TAIL
+from .defaults import CLOSER_SPLIT, LAYOUT_ONE, LAYOUT_SPLIT, LOCK_POSE, METAPHORS, REF_CUTOUT, STYLE, TAIL
 
 # Preferred: p1_cargo / t1_one. Also any identifier that is not a known character.
 _SLUG_PREF = re.compile(r"^p\d+_[A-Za-z0-9_]+$")
@@ -73,6 +73,7 @@ class Plate:
     pane_right: str = ""
     pane_left_ids: list[str] = field(default_factory=list)
     pane_right_ids: list[str] = field(default_factory=list)
+    named_ids: list[str] | None = None
 
 
 @dataclass
@@ -247,14 +248,20 @@ def _spacecraft(text: str) -> str:
     return _VESSEL.sub("spacecraft", text or "")
 
 
+def _cutout_clause(cutout: bool, cutout_text: str = "") -> str:
+    if not cutout:
+        return ""
+    return (cutout_text or REF_CUTOUT).strip()
+
+
 def _ref_hint(n: int, cutout: bool) -> str:
     if cutout:
         return (
-            f"Use image{n} as reference for identity and costume only, background removed. "
+            f"Use image{n} as reference for how this subject looks, background removed. "
             "Do not copy its pose, seat, window, room, or composition."
         )
     return (
-        f"Use image{n} as reference for identity and costume only. "
+        f"Use image{n} as reference for how this subject looks. "
         "Do not copy its pose, seat, window, room, or composition."
     )
 
@@ -287,35 +294,22 @@ def assemble(
     tail: str,
     n_pictures: int = 0,
     cutout: bool = False,
+    cutout_text: str = "",
     layout: str = "one",
     layout_text: str = "",
 ) -> str:
-    """One undivided plate. Two-pane pairs use assemble_pair()."""
+    """Ink + layout + optional closer + Book wall. Cast lock and stills copy live in the wall."""
     style = style.strip()
     scene = _spacecraft(scene.strip().rstrip(".,; "))
     lt = (layout_text or LAYOUT_ONE).strip()
     bits: list[str] = [style]
     if lt and (layout or "one") != "split":
         bits.append(lt)
-    if n_pictures and cutout:
-        bits.append(REF_CUTOUT)
-    if locks:
-        bits.append(", ".join(locks))
+    if (tail or "").strip():
+        bits.append(tail.strip())
     if scene:
         bits.append(scene)
-    if n_pictures <= 1 and n_pictures:
-        bits.append(
-            _ref_hint(1, cutout)
-            + " Invent the new scene as written. Draw exactly one of this person, "
-            "never a duplicate, never a second panel."
-        )
-    elif n_pictures > 1:
-        bits.append(
-            " ".join(_ref_hint(i, cutout) for i in range(1, n_pictures + 1))
-            + f" Draw exactly {n_pictures} people in one undivided scene, "
-            "one per picture, no extra copies, no second panel."
-        )
-    return _close(_join_clauses(*bits), tail)
+    return _join_clauses(*bits)
 
 
 def extract_inline_panes(scene: str) -> tuple[str, str] | None:
@@ -331,8 +325,7 @@ def extract_inline_panes(scene: str) -> tuple[str, str] | None:
 
 def _pane_block(label: str, scene: str, locks: list[str], ref_n: int, cutout: bool) -> str:
     scene = _spacecraft(scene.strip().rstrip(".,; "))
-    lock = ", ".join(x for x in locks if x)
-    inner = _join_clauses(lock, scene, _ref_hint(ref_n, cutout) if ref_n else "")
+    inner = _join_clauses(scene)
     return f"{label}: {inner}" if inner else f"{label}:"
 
 
@@ -347,15 +340,16 @@ def assemble_pair(
     n_left_refs: int = 0,
     n_right_refs: int = 0,
     cutout: bool = False,
+    cutout_text: str = "",
 ) -> str:
-    """Two different scenes: left pane, right pane. Lock then camera in each pane."""
+    """Two different scenes: left pane, right pane. Wall text only in each pane."""
     style = style.strip()
     lt = (layout_text or LAYOUT_SPLIT).strip()
     bits: list[str] = [style]
     if lt:
         bits.append(lt)
-    if (n_left_refs or n_right_refs) and cutout:
-        bits.append(REF_CUTOUT)
+    if (tail or "").strip():
+        bits.append(tail.strip())
     bits.append(_pane_block("Left pane", left_scene, left_locks, 1 if n_left_refs else 0, cutout))
     right_ref = (2 if n_left_refs else 1) if n_right_refs else 0
     bits.append(_pane_block("Right pane", right_scene, right_locks, right_ref, cutout))
@@ -363,7 +357,7 @@ def assemble_pair(
         "The left pane and the right pane are two different scenes, two different poses. "
         "Do not mirror. Do not copy the left place or action into the right pane."
     )
-    return _close(_join_clauses(*bits), tail)
+    return _join_clauses(*bits)
 
 
 def apply_split_pairs(
@@ -376,6 +370,7 @@ def apply_split_pairs(
     cutout: bool,
     warnings: list[str],
     pair_consecutive: bool = True,
+    cutout_text: str = "",
 ) -> None:
     """Split only plates that ask for it. Consecutive pairing is Settings two-pane only."""
     i = 0
@@ -403,6 +398,7 @@ def apply_split_pairs(
                 n_left_refs=n_pictures_for.get(a.slug, 0),
                 n_right_refs=n_pictures_for.get(a.slug, 0),
                 cutout=cutout,
+                cutout_text=cutout_text,
             )
             a.assembled = text
             a.pane, a.pair_with = "inline", a.slug
@@ -430,6 +426,7 @@ def apply_split_pairs(
             n_left_refs=n_pictures_for.get(a.slug, 0),
             n_right_refs=n_pictures_for.get(b.slug, 0),
             cutout=cutout,
+            cutout_text=cutout_text,
         )
         a.assembled = text
         b.assembled = text
@@ -446,6 +443,7 @@ def parse_book(
     tail: str = TAIL,
     n_pictures_for: dict[str, int] | None = None,
     cutout: bool = False,
+    cutout_text: str = "",
     layout: str = "one",
     layout_text: str = "",
 ) -> ParseResult:
@@ -486,8 +484,12 @@ def parse_book(
             pane_right = _spacecraft(
                 re.sub(r"\s+", " ", _strip_character_tokens(raw_panes[1], name_set)).strip()
             )
+        named = list(hits)
         if not hits and default_id:
             hits = [default_id]
+            pw.append(
+                f"{slug}: no character token — used {default_id} lock, stills not attached"
+            )
         risky = len(hits) >= 2
         if risky:
             pw.append(f"{slug}: two-shot — faces fuse")
@@ -502,8 +504,9 @@ def parse_book(
             tail,
             n_pictures=n_pic,
             cutout=cutout,
+            cutout_text=cutout_text,
             layout="one",
-            layout_text=LAYOUT_ONE,
+            layout_text=layout_text or LAYOUT_ONE,
         )
         plates.append(
             Plate(
@@ -521,6 +524,7 @@ def parse_book(
                 pane_right=pane_right,
                 pane_left_ids=pane_left_ids,
                 pane_right_ids=pane_right_ids,
+                named_ids=named,
             )
         )
         warnings.extend(pw)
@@ -537,6 +541,7 @@ def parse_book(
             cutout,
             warnings,
             pair_consecutive=True,
+            cutout_text=cutout_text,
         )
     elif has_inline:
         apply_split_pairs(
@@ -549,6 +554,7 @@ def parse_book(
             cutout,
             warnings,
             pair_consecutive=False,
+            cutout_text=cutout_text,
         )
 
     return ParseResult(plates=plates, warnings=warnings)

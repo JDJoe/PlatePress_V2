@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Plate Press</title>
-  <link rel="stylesheet" href="/static/style.css?v=17" />
+  <link rel="stylesheet" href="/static/style.css?v=18" />
 </head>
 <body>
   <header>
@@ -40,8 +40,9 @@
       <textarea id="neg"></textarea>
 
       <label class="tiny"><input type="checkbox" id="send_refs" /> Send character stills to Comfy (off = text locks only)</label>
-      <label class="tiny"><input type="checkbox" id="ref_cutout" /> Stills are cutouts (optional). Tells Comfy the background is already removed so it should not steal the room from the photo.</label>
-      <p class="tiny">On: first still on the plate → <code>image1</code>, second → <code>image2</code>. The prompt says <code>use imageN as reference</code>.</p>
+      <label class="tiny"><input type="checkbox" id="ref_cutout" /> Stills are cutouts (off unless you check it)</label>
+      <textarea id="ref_cutout_text" style="min-height:4rem"></textarea>
+      <p class="tiny">Cutout sentence is sent only when the box is on. Edit it here. On: first still → <code>image1</code>, second → <code>image2</code>.</p>
 
       <label>Assembled recipe (preview)</label>
       <div id="assemble-preview" class="assemble-preview"></div>
@@ -114,9 +115,21 @@
       <label>Book title</label>
       <input id="title" type="text" />
       <p class="tiny" id="book-id"></p>
-      <p class="tiny">Slug on its own line (p1_cargo). Then place + pose + one metaphor. Put them in a world, not a studio. Do not square them to the camera. App prepends STYLE and locks. Do not paste aethernouveau into the story box.</p>
+      <p class="tiny">Slug on its own line (<code>p01_wreck</code>). Next line is the Cast token if a still should attach. Then the shot headings. Settings only prepends ink and the layout line. Do not paste aethernouveau here. Say spacecraft, not ship.</p>
+      <p class="tiny">Plate template — copy into the wall:</p>
+      <pre id="plate-template" class="plate-template">p01_slug
+PILOT
+REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and composition from the reference.
+SHOT: Medium side action shot.
+CAMERA: Where we stand, where we look. Full body / over the shoulder / profile. Both eyes hidden. Does not face the viewer.
+LOCATION: Place, ground, weather or interior. Named objects.
+ACTION: Caught in the instant of [verb].
+GAZE: Eyes on a named thing in the frame, never the viewer.
+HANDS: What both hands are doing.
+MOTION: Body, boots, pack, debris, the beat.</pre>
+      <button type="button" class="act ghost" id="copy-plate-template">Copy plate template</button>
       <label>Prompts / story</label>
-      <textarea id="prompts_raw" class="tall" placeholder="p1_cargo&#10;braced in a narrow hold, the crate seams gleaming like liquid silver"></textarea>
+      <textarea id="prompts_raw" class="tall" placeholder="p01_slug&#10;PILOT&#10;REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and composition from the reference.&#10;SHOT:&#10;CAMERA:&#10;LOCATION:&#10;ACTION: Caught in the instant of &#10;GAZE:&#10;HANDS:&#10;MOTION:"></textarea>
       <label>Captions</label>
       <textarea id="captions_raw" class="tall" placeholder="p1_cargo&#10;line&#10;line"></textarea>
       <button class="act" id="save-book">Save book</button>
@@ -157,19 +170,21 @@
       <ol>
         <li>Settings — pick a style card, Test connection.</li>
         <li>Cast — this book’s people. Optional stills.</li>
-        <li>Book — paste scenes. Parse. Generate.</li>
+        <li>Book — paste the labeled shot wall. Parse. Generate.</li>
         <li>Queue — letter captions <em>after</em> the sampler. Never ask Comfy for text in the picture.</li>
       </ol>
 
       <h3>Settings</h3>
       <ul>
-        <li>Ink, closer, NEG, LoRA, and stills-on/off are shared. Cast, story, and plates belong to the open book.</li>
+        <li>Ink, layout line, closer, NEG, LoRA, and stills-on/off are shared. Cast, story, and plates belong to the open book.</li>
         <li><strong>Test connection</strong> first.</li>
         <li><strong>Style cards are the mode.</strong> There is no Plate layout radio.</li>
         <li><strong>Bos, one plate</strong>: each slug is one image. If that slug contains <code>left pane:</code> / <code>right pane:</code>, only that plate splits.</li>
         <li><strong>Two-pane comic</strong>: consecutive slugs share one image (p1 left, p2 right). Do not write “Left pane” yourself. Each pane is its own scene as written.</li>
         <li>Click a card to fill ink, layout line, closer, and matching negatives. The boxes stay editable.</li>
-        <li><strong>Send character stills</strong> is off unless you mean that. Off = text locks only. On: first still → <code>image1</code>, second → <code>image2</code>. Prompt says <code>use imageN as reference</code>.</li>
+        <li><strong>Ink</strong> and <strong>Layout line</strong> are prepended to every plate. <strong>World closer</strong> only if that box has text.</li>
+        <li><strong>Send character stills</strong> is off unless you check it. On: named Cast token with a still → <code>image1</code>. Write <code>REFERENCE: use picture1…</code> on the wall; the app does not add that sentence. No still → no image.</li>
+        <li><strong>Stills are cutouts</strong> is off unless you check it. The sentence is editable and is not auto-inserted.</li>
         <li>LoRA filename is a setting. Change it later. It is not the product.</li>
         <li>Do not touch sampler unless you mean it. Factory: 8 steps, CFG 1, euler, beta.</li>
       </ul>
@@ -178,41 +193,48 @@
       <ul>
         <li>Cast is per book. Five books can all have ANDROID; they are not the same person.</li>
         <li>Header plus Cast, Book, Queue, and Settings headings show the open book.</li>
-        <li>Name is the token in the story wall: <code>ANDROID</code> or <code>{ANDROID}</code>.</li>
-        <li>Lock is stuffed into every plate that names that character. A spacesuit lock will beat a gilt-chair scene.</li>
+        <li>Name is the token on the wall: <code>PILOT</code> or <code>{PILOT}</code>. Whole word only. <code>PILOT1</code> does not match <code>PILOT</code>.</li>
+        <li>Lock is face + suit + pack for you and the LLM sheet. It is <em>not</em> pasted into the Comfy prompt. Put look and <code>picture1</code> on the Book wall.</li>
         <li>A name like <code>PATRON</code> only works if that card exists on this book.</li>
-        <li>0–3 local stills per card. One body. Replace still on that card. Two-shots are flagged. Faces fuse.</li>
+        <li>0–3 local stills per card. One body. Frontal portraits make the figure find the camera.</li>
         <li><strong>Lock seed</strong> on a thumb in Queue, then later plates of that character can reuse it.</li>
         <li><strong>Load demo cast</strong> replaces this book’s roster, not a global list.</li>
       </ul>
 
       <h3>Book</h3>
-      <p>Story wall:</p>
-      <pre>p1_cargo
-ANDROID
-seen over her left shoulder, hauling a sealed ox-hide crate down a receding cargo bay,
-the crate seams gleaming like liquid silver</pre>
+      <p>Story wall (copy the template on the Book page):</p>
+      <pre>p01_slug
+PILOT
+REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and composition from the reference.
+SHOT: Medium side action shot.
+CAMERA: Where we stand, where we look. Both eyes hidden. Does not face the viewer.
+LOCATION: Place, ground, weather or interior.
+ACTION: Caught in the instant of [verb].
+GAZE: Eyes on a named thing in the frame, never the viewer.
+HANDS: What both hands are doing.
+MOTION: Body, boots, pack, debris, the beat.</pre>
       <ul>
-        <li>Slug on its own line (<code>p1_cargo</code>, <code>t1_one</code>).</li>
-        <li>Then place + pose + exactly one metaphor. Not a studio. Not square to the camera.</li>
-        <li>Do not paste STYLE, TAIL, sampler, or <code>aethernouveau</code> here. The app prepends those.</li>
+        <li>Slug on its own line (<code>p01_wreck</code>). Token on the next line must match Cast <strong>Name</strong> if a still should attach.</li>
+        <li>Do not paste ink, closer, sampler, or <code>aethernouveau</code> here. The app prepends ink and the layout line (and closer if that box is not empty).</li>
+        <li>Hide the eyes. Working verb: <strong>caught in the instant of [verb]</strong>.</li>
         <li>Captions: same slugs, keep newlines, in the <strong>Captions</strong> box. Caption is the moral. Prompt is the camera.</li>
         <li>The default book is the demo. It cannot be deleted from the UI.</li>
         <li><strong>Parse</strong> before generate. Check the two-shot column.</li>
         <li>The table header checkbox selects or clears every slug.</li>
-        <li><strong>Generate selected</strong> uses the checked rows and always queues a new version, even if images already exist. It Parses first. Skip only applies to Generate missing.</li>
-        <li>Assembler order: ink (STYLE), layout line, cast lock, your slug, TAIL. Each chunk is its own sentence. Lock before the camera so the face does not outvote the action.</li>
-        <li>Two-pane comic: one checked row uses the next slug as the right pane. Lock then camera in each pane.</li>
+        <li><strong>Generate selected</strong> uses the checked rows and always queues a new version. It Parses first. Skip only applies to Generate missing.</li>
+        <li>Assembler: <strong>ink, layout line, closer (if any), Book wall</strong>. Cast lock and stills sentences are not auto-inserted.</li>
+        <li>Two-pane comic: one checked row uses the next slug as the right pane. Write a full shot on each slug.</li>
         <li>Default: 2 random seeds per plate.</li>
-        <li><strong>Copy instructions for your LLM</strong> copies the sheet plus current locks.</li>
+        <li><strong>Copy instructions for your LLM</strong> copies the sheet plus current locks (identity notes, not prompt prefix).</li>
       </ul>
-      <p>Metaphor examples: spiderweb of black cells; wet silk into teal glass; stained glass; gold leaf over black glass; liquid silver; fire-silk; enamel. Any material metaphor is fine.</p>
+      <p>Metaphor examples: spiderweb of black cells; wet silk into teal glass; stained glass; gold leaf over black glass; liquid silver; fire-silk; enamel. Hang a metaphor on a named object.</p>
 
       <h3>Refs</h3>
       <ul>
         <li>Off unless <strong>Send character stills</strong> is checked.</li>
-        <li>Optional: <strong>Stills are cutouts</strong> — tells Comfy the background is already gone.</li>
-        <li>One still per character named on that plate. Do not add a second ANDROID.</li>
+        <li>One still per Cast token named on that plate. <code>PILOT</code> attaches; <code>PILOT1</code> does not.</li>
+        <li>Frontal “look at me” stills clone that pose. Prefer a full-body costume still.</li>
+        <li>Cutouts: optional checkbox plus editable sentence. Prefer writing REFERENCE on the wall.</li>
       </ul>
 
       <h3>Queue / Letter</h3>
@@ -236,6 +258,6 @@ the crate seams gleaming like liquid silver</pre>
       </ul>
     </section>
   </main>
-  <script src="/static/app.js?v=31"></script>
+  <script src="/static/app.js?v=36"></script>
 </body>
 </html>
