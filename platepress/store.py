@@ -19,7 +19,6 @@ from .defaults import (
     PER_PROMPT,
     REF_CUTOUT,
     STYLE,
-    TAIL,
     neg_for,
 )
 
@@ -40,7 +39,7 @@ def migrate_layout(s: dict[str, Any]) -> dict[str, Any]:
         elif "divided" in head or "two scene" in head:
             s["layout"] = "split"
         rest = tail[m.end() :].lstrip()
-        s["tail"] = (" " + rest) if rest else TAIL
+        s["tail"] = (" " + rest) if rest else ""
         s["layout_text"] = LAYOUT_SPLIT if s.get("layout") == "split" else LAYOUT_ONE
     if s.get("layout") not in ("one", "split"):
         s["layout"] = "one"
@@ -101,7 +100,7 @@ def default_settings() -> dict[str, Any]:
         "style": STYLE,
         "layout": "one",
         "layout_text": LAYOUT_ONE,
-        "tail": TAIL,
+        "tail": "",
         "neg": NEG,
         "images_per_plate": PER_PROMPT,
         "output_root": "platepress/books",

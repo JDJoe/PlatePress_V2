@@ -19,9 +19,9 @@ Ink, layout line, closer, NEG, LoRA, and stills-on/off are **shared**. Cast, sto
 - **Style cards are the mode.** There is no separate Plate layout radio.
 - **Bos, one plate**: each slug is one image. If that slug contains `left pane:` / `right pane:`, only that plate splits.
 - **Two-pane comic**: consecutive slugs share one image (p1 left, p2 right). Do not write “Left pane” yourself. Each pane is its own scene as written.
-- Click a card to fill ink, layout line, closer, and matching negatives. The boxes stay editable.
+- Click a card to fill ink, layout line, and matching negatives. World closer stays empty unless you type it. The boxes stay editable.
 - **Ink** and **Layout line** are prepended to every plate.
-- **World closer** is prepended only if that box has text. Empty is fine.
+- **World closer** is empty by default. Prepended only if that box has text.
 - **NEG** is the negative prompt.
 - **Send character stills** is off unless you check it. On: if the slug names a Cast token and that card has a still, the file is `image1` (second named body → `image2`). No still on the card → no image, same graph, unused LoadImage nodes dropped. Write `REFERENCE: use picture1…` in the Book wall yourself; the app does not add that sentence.
 - **Stills are cutouts** is off unless you check it. The cutout sentence is editable. It is not stuffed into the prompt unless you put it on the wall.

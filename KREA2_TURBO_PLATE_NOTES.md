@@ -17,7 +17,7 @@ aethernouveau. Ink and watercolor by Moebius, thin black outlines, muted ochre, 
 ```
 
 Layout: one undivided plate.  
-TAIL: environment to all four edges, painted sky, no empty studio, no blank paper sky, sharp, no text, no logos.
+TAIL: empty by default. Type a closer only if you want one prepended.
 
 Assembler now: **STYLE → layout → [closer if any] → Book wall**
 

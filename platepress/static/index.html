@@ -25,7 +25,7 @@
       <h2 data-book-heading="Open book"></h2>
       <p class="tiny">Ink, layout, and LoRA are shared. Cast, story, and plates belong to the open book below.</p>
       <h3>Style examples</h3>
-      <p class="tiny">The card is the mode. Bos: one image per slug (a slug may still split if it contains left pane / right pane). Two-pane comic: consecutive slugs share one image. Click fills ink, closer, and negatives. The boxes stay editable.</p>
+      <p class="tiny">The card is the mode. Bos: one image per slug (a slug may still split if it contains left pane / right pane). Two-pane comic: consecutive slugs share one image. Click fills ink, layout, and negatives. World closer stays empty unless you type it.</p>
       <div id="examples" class="examples"></div>
       <input type="hidden" id="layout" />
 
@@ -36,6 +36,7 @@
 
       <label>World closer (TAIL)</label>
       <textarea id="tail" style="min-height:4rem"></textarea>
+      <p class="tiny">Empty by default. Prepended only if this box has text.</p>
       <label>NEG</label>
       <textarea id="neg"></textarea>
 
@@ -181,8 +182,8 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
         <li><strong>Style cards are the mode.</strong> There is no Plate layout radio.</li>
         <li><strong>Bos, one plate</strong>: each slug is one image. If that slug contains <code>left pane:</code> / <code>right pane:</code>, only that plate splits.</li>
         <li><strong>Two-pane comic</strong>: consecutive slugs share one image (p1 left, p2 right). Do not write “Left pane” yourself. Each pane is its own scene as written.</li>
-        <li>Click a card to fill ink, layout line, closer, and matching negatives. The boxes stay editable.</li>
-        <li><strong>Ink</strong> and <strong>Layout line</strong> are prepended to every plate. <strong>World closer</strong> only if that box has text.</li>
+        <li>Click a card to fill ink, layout line, and matching negatives. World closer stays empty unless you type it. The boxes stay editable.</li>
+        <li><strong>Ink</strong> and <strong>Layout line</strong> are prepended to every plate. <strong>World closer</strong> only if that box has text (empty by default).</li>
         <li><strong>Send character stills</strong> is off unless you check it. On: named Cast token with a still → <code>image1</code>. Write <code>REFERENCE: use picture1…</code> on the wall; the app does not add that sentence. No still → no image.</li>
         <li><strong>Stills are cutouts</strong> is off unless you check it. The sentence is editable and is not auto-inserted.</li>
         <li>LoRA filename is a setting. Change it later. It is not the product.</li>

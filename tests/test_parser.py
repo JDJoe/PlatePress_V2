@@ -163,7 +163,7 @@ def test_double_style_stripped():
 p1_cargo
 {STYLE} braced in a narrow hold, liquid silver.{TAIL}
 """
-    r = parse_book(wall, "", CAST)
+    r = parse_book(wall, "", CAST, tail=TAIL)
     p = r.plates[0]
     assert p.assembled.count("aethernouveau.") == 1
     assert any("aethernouveau" in w for w in p.warnings)
@@ -196,7 +196,7 @@ braced in a narrow hold, both brown gloves on a sealed ox-hide crate, the crate 
     assert r.plates[0].assembled.startswith(STYLE)
     assert ANDROID not in r.plates[0].assembled
     assert r.plates[0].assembled.rstrip(".").endswith("liquid silver")
-    assert r.plates[0].assembled.find(TAIL.strip()) < r.plates[0].assembled.find("liquid silver")
+    assert TAIL.strip() not in r.plates[0].assembled
 
 
 def test_blank_line_inside_body():

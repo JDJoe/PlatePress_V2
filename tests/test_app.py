@@ -21,6 +21,7 @@ def test_portable_paths_are_repo_relative():
     assert "/home/" not in s["workflow_text"]
     assert "/home/" not in s["output_root"]
     assert s["ref_cutout"] is False
+    assert s["tail"] == ""
     assert "cutouts" in (s.get("ref_cutout_text") or "").lower()
 
 

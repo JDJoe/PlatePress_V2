@@ -1,11 +1,11 @@
-"""Story wall + caption wall → plates. The app assembles STYLE/lock/TAIL."""
+"""Story wall + caption wall → plates. The app assembles ink, layout, optional closer, Book wall."""
 
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
 
-from .defaults import CLOSER_SPLIT, LAYOUT_ONE, LAYOUT_SPLIT, LOCK_POSE, METAPHORS, REF_CUTOUT, STYLE, TAIL
+from .defaults import LAYOUT_ONE, LAYOUT_SPLIT, METAPHORS, REF_CUTOUT, STYLE
 
 # Preferred: p1_cargo / t1_one. Also any identifier that is not a known character.
 _SLUG_PREF = re.compile(r"^p\d+_[A-Za-z0-9_]+$")
@@ -440,7 +440,7 @@ def parse_book(
     captions_raw: str,
     characters: list[Character],
     style: str = STYLE,
-    tail: str = TAIL,
+    tail: str = "",
     n_pictures_for: dict[str, int] | None = None,
     cutout: bool = False,
     cutout_text: str = "",
@@ -548,7 +548,7 @@ def parse_book(
             plates,
             by_name,
             style,
-            CLOSER_SPLIT,
+            tail,
             LAYOUT_SPLIT,
             n_pictures_for,
             cutout,

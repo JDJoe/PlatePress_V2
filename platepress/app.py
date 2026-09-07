@@ -216,7 +216,7 @@ def _done_slugs(d: Path) -> set[str]:
 def _parse(book: dict[str, Any], s: dict[str, Any], picture_counts: dict[str, int] | None = None):
     chars = _chars(book)
     style = book.get("style") or s["style"]
-    tail = book.get("tail") or s["tail"]
+    tail = book.get("tail") or s.get("tail") or ""
     return parse_book(
         book.get("prompts_raw") or "",
         book.get("captions_raw") or "",
@@ -620,7 +620,7 @@ def post_generate(body: dict[str, Any]) -> dict[str, Any]:
                 left_scene,
                 locks_r,
                 right_scene,
-                book.get("tail") or s["tail"],
+                book.get("tail") or s.get("tail") or "",
                 layout_text=s.get("layout_text") or "",
                 n_left_refs=min(1, len(refs_l)),
                 n_right_refs=min(1, len(refs_r)),

@@ -85,7 +85,7 @@ EXAMPLES = {
         "layout": "one",
         "style": INK_BOS,
         "layout_text": LAYOUT_ONE,
-        "tail": CLOSER_ONE,
+        "tail": "",
         "neg": neg_for("one"),
     },
     "split": {
@@ -95,7 +95,7 @@ EXAMPLES = {
         "layout": "split",
         "style": INK_PANE,
         "layout_text": LAYOUT_SPLIT,
-        "tail": CLOSER_SPLIT,
+        "tail": "",
         "neg": neg_for("split"),
     },
 }
