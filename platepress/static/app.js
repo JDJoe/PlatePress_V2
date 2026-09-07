@@ -82,11 +82,11 @@ function updateUnetWarn() {
   const inList = !models.length || !name || models.indexOf(resolved) >= 0;
   const krea = !name || krea2Name(resolved);
   if (name && models.length && !inList) {
-    el.textContent = name + " is not in Comfy’s UNETLoader list. Load lists from Comfy and pick the exact name (often KREA2/…).";
+    el.textContent = name + " is not in Comfy’s UNETLoader list. Load lists from Comfy and pick the exact name.";
     el.classList.remove("off");
     return;
   }
-  el.textContent = "Must be a Krea 2 UNET. Pick the exact Comfy name (e.g. KREA2/kreamania_variant7.safetensors). Bare filenames fail. This app does not download models.";
+  el.textContent = "Must be a Krea 2 UNET. Pick the exact Comfy name (e.g. KREA2/krea2_turbo_bf16.safetensors). Bare filenames fail. This app does not download models.";
   el.classList.toggle("off", krea);
 }
 

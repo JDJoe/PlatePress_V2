@@ -48,7 +48,7 @@
       <h3>Model and LoRAs</h3>
       <p class="tiny">These swap files inside the V3 graph. Do not export a new API workflow. CLIP and VAE stay as they are. The diffusion model must be <strong>Krea 2</strong>.</p>
       <button type="button" class="act" id="scan-weights">Load lists from Comfy</button>
-      <p class="tiny">Uses the names UNETLoader actually accepts. Combo name is the listed folder plus the listed file (<code>KREA2/gonzalomoKrea2_v40.safetensors</code>). Softlinks keep those names; we do not follow them. Folders below are only a fallback if Comfy is down.</p>
+      <p class="tiny">Uses the names UNETLoader actually accepts. Combo name is the listed folder plus the listed file (<code>KREA2/krea2_turbo_bf16.safetensors</code>). Softlinks keep those names; we do not follow them. Folders below are only a fallback if Comfy is down.</p>
       <label>Diffusion models folder (fallback)</label>
       <input id="models_dir" type="text" placeholder="~/ComfyUI/models/diffusion_models" />
       <label>LoRAs folder (fallback)</label>
@@ -56,7 +56,7 @@
       <label>Diffusion model</label>
       <input id="unet_name" type="text" list="unet-list" />
       <datalist id="unet-list"></datalist>
-      <p class="tiny warn-note" id="unet-warn">Must be a Krea 2 UNET. Pick the exact Comfy name (e.g. <code>KREA2/kreamania_variant7.safetensors</code>). Bare filenames fail. This app does not download models.</p>
+      <p class="tiny warn-note" id="unet-warn">Must be a Krea 2 UNET. Pick the exact Comfy name (e.g. <code>KREA2/krea2_turbo_bf16.safetensors</code>). Bare filenames fail. This app does not download models.</p>
       <p class="tiny">LoRAs (up to 4, rgthree stack). First slot is the style LoRA.</p>
       <div id="lora-stack"></div>
       <button type="button" class="act ghost" id="add-lora">Add LoRA</button>
@@ -266,6 +266,6 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
       </ul>
     </section>
   </main>
-  <script src="/static/app.js?v=38"></script>
+  <script src="/static/app.js?v=39"></script>
 </body>
 </html>

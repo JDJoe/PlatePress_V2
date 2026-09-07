@@ -304,7 +304,7 @@ def _run_job(job: dict[str, Any]) -> None:
             raise ComfyError(
                 f"UNET {unet_name!r} is not in Comfy UNETLoader. "
                 "Load lists from Comfy and pick the exact name "
-                "(subfolder prefix counts, e.g. KREA2/kreamania_variant7.safetensors)."
+                "(subfolder prefix counts, e.g. KREA2/krea2_turbo_bf16.safetensors)."
             )
         unet_name = resolved
     if lora_names:

@@ -345,14 +345,13 @@ def test_match_combo_name_unique_basename():
 
     available = [
         "KREA2/krea2_turbo_bf16.safetensors",
-        "KREA2/kreamania_variant7.safetensors",
-        "FLUX/flux_dev.safetensors",
+        "other/other.safetensors",
     ]
-    assert match_combo_name("kreamania_variant7.safetensors", available) == (
-        "KREA2/kreamania_variant7.safetensors"
+    assert match_combo_name("krea2_turbo_bf16.safetensors", available) == (
+        "KREA2/krea2_turbo_bf16.safetensors"
     )
-    assert match_combo_name("KREA2/kreamania_variant7.safetensors", available) == (
-        "KREA2/kreamania_variant7.safetensors"
+    assert match_combo_name("KREA2/krea2_turbo_bf16.safetensors", available) == (
+        "KREA2/krea2_turbo_bf16.safetensors"
     )
     assert match_combo_name("missing.safetensors", available) is None
 
@@ -372,14 +371,14 @@ def test_list_weights_keeps_symlink_names(tmp_path):
 
     real = tmp_path / "actual_weights"
     real.mkdir()
-    target = real / "gonzalomoKrea2_v40.safetensors"
+    target = real / "krea2_turbo_bf16.safetensors"
     target.write_bytes(b"x")
     models = tmp_path / "diffusion_models"
     krea = models / "KREA2"
     krea.mkdir(parents=True)
-    (krea / "gonzalomoKrea2_v40.safetensors").symlink_to(target)
+    (krea / "krea2_turbo_bf16.safetensors").symlink_to(target)
     names = list_weights(models)
-    assert names == ["KREA2/gonzalomoKrea2_v40.safetensors"]
+    assert names == ["KREA2/krea2_turbo_bf16.safetensors"]
 
     linked_root = tmp_path / "models_link"
     linked_root.symlink_to(models)
@@ -391,15 +390,13 @@ def test_list_weights_keeps_symlink_names(tmp_path):
     sub = tmp_path / "diffusion_models_sub"
     sub.mkdir()
     (sub / "KREA2").symlink_to(real)
-    assert list_weights(sub) == ["KREA2/gonzalomoKrea2_v40.safetensors"]
+    assert list_weights(sub) == ["KREA2/krea2_turbo_bf16.safetensors"]
 
     # Pointed at the KREA2 folder itself (often a softlink): keep "KREA2/" + file.
-    assert list_weights(krea) == ["KREA2/gonzalomoKrea2_v40.safetensors"]
-    krea_link = tmp_path / "krea_link"
-    krea_link.symlink_to(real)
+    assert list_weights(krea) == ["KREA2/krea2_turbo_bf16.safetensors"]
     krea_link_as = tmp_path / "KREA2_linkdir"
     krea_link_as.symlink_to(real)
-    assert list_weights(krea_link_as) == ["KREA2_linkdir/gonzalomoKrea2_v40.safetensors"]
+    assert list_weights(krea_link_as) == ["KREA2_linkdir/krea2_turbo_bf16.safetensors"]
 
 
 def test_scan_weights_api(tmp_path, monkeypatch):
