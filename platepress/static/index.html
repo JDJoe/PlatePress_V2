@@ -193,7 +193,7 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
         <li><strong>Ink</strong> and <strong>Layout line</strong> are prepended to every plate. <strong>World closer</strong> only if that box has text (empty on Bos).</li>
         <li><strong>Send character stills</strong> is off unless you check it. On: named Cast token with a still → <code>image1</code>. Write <code>REFERENCE: use picture1…</code> on the wall; the app does not add that sentence. No still → no image.</li>
         <li><strong>Stills are cutouts</strong> is off unless you check it. The sentence is editable and is not auto-inserted.</li>
-        <li><strong>Model and LoRAs</strong> — <strong>Load lists from Comfy</strong> so names match UNETLoader (including <code>KREA2/</code>). Must be a Krea 2 UNET. Up to four LoRAs. Folders are a fallback if Comfy is down. Do not export a new API workflow.</li>
+        <li><strong>Model and LoRAs</strong> — <strong>Load lists from Comfy</strong> and pick the exact UNETLoader name. Combo name is the listed folder plus the listed file (<code>KREA2/krea2_turbo_bf16.safetensors</code>). Softlinks keep those names. Must be a Krea 2 UNET. Up to four LoRAs. CLIP and VAE stay. Folders are a fallback if Comfy is down. Do not export a new API workflow.</li>
         <li>Do not touch sampler unless you mean it. Factory: 8 steps, CFG 1, euler, beta.</li>
       </ul>
 

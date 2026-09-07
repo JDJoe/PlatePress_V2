@@ -21,9 +21,11 @@ TAIL: empty on Bos. Two-pane card fills “each pane is its own scene…”.
 
 Assembler now: **STYLE → layout → [closer if any] → Book wall**
 
+Settings **Model and LoRAs**: Load lists from Comfy. Combo name is the listed folder plus the listed file (`KREA2/krea2_turbo_bf16.safetensors`). Softlinks keep those names. Do not export a new API graph to change UNET or LoRAs. CLIP and VAE stay. Must be Krea 2.
+
 ## Cast lock
 
-Lock = face + suit + pack. That sentence is pasted onto every plate.
+Lock = face + suit + pack for you and the LLM sheet. The app does **not** paste it into the Comfy prompt. Put look, costume, and `picture1` on the Book wall.
 
 **Never put in the lock:**
 - looking back over her shoulder

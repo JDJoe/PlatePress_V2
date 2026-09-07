@@ -10,10 +10,9 @@ Pages: **Settings** · **Cast** · **Book** · **Queue / Letter** · **Help**. O
 
 - Python 3.10+
 - ComfyUI at `http://127.0.0.1:8188` (configurable)
-- Krea2 **Turbo** (`KREA2/krea2_turbo_bf16.safetensors` or the path already in your graph)
-- The LoRA currently in your graph (swap it in Settings; it is not bundled)
-- API workflow JSON (ComfyUI → **Save (API Format)**):
-  - `Krea2T_V3_ref_clean01-API.json` (text and stills; unused LoadImage nodes are dropped)
+- Krea2 **Turbo** (`KREA2/krea2_turbo_bf16.safetensors`)
+- Style LoRA in Settings (factory: `Krea2-aethernouveau-04`; not bundled)
+- API workflow JSON ships in the repo: `Krea2T_V3_ref_clean01-API.json` (text and stills; unused LoadImage nodes are dropped). Do not export a new API graph to change the UNET or LoRAs.
 
 ## Install
 
@@ -50,7 +49,7 @@ There is no separate Plate layout radio. The card *is* the mode.
 
 Factory sampler (leave it unless you mean it): 8 steps, CFG 1, euler, beta.
 
-**Model and LoRAs** live in Settings. **Load lists from Comfy** and pick the exact UNETLoader name (e.g. `KREA2/krea2_turbo_bf16.safetensors`). Bare filenames fail validation. Must be a **Krea 2** UNET. Up to four LoRAs. Plate Press patches the shipped V3 graph; do not export a new API workflow to change these. Folders are only a fallback if Comfy is down.
+**Model and LoRAs** live in Settings. **Load lists from Comfy** and pick the exact UNETLoader name. Combo name is the listed folder plus the listed file (`KREA2/krea2_turbo_bf16.safetensors`). Softlinks keep those names; the app does not follow them to the real path. Bare filenames fail. Must be a **Krea 2** UNET. Up to four LoRAs (rgthree stack). CLIP and VAE stay as in the graph. Folders are only a fallback if Comfy is down.
 
 ## Cast (per book)
 
@@ -121,4 +120,4 @@ More detail: `HELP.md` (same topics as the in-app **Help** tab). Same Clouds cam
 
 ## GitHub
 
-`platepress/books/`, `platepress/settings.json`, and `JUNK/` are gitignored. Commit the demo under `platepress/demo/bos/`, not your live books. Do not commit screenshots or Comfy dumps at the repo root.
+`platepress/books/`, `platepress/settings.json`, and `JUNK/` are gitignored. Commit the demo under `platepress/demo/bos/`, not your live books. Do not commit screenshots, Comfy dumps, extra checkpoints, or extra LoRAs. Factory UNET is Krea2 Turbo; factory LoRA is aethernouveau.
