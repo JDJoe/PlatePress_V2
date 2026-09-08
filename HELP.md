@@ -67,7 +67,7 @@ MOTION: Body, boots, pack, debris, the beat.
 - Working verb: **caught in the instant of [verb]**.
 - Captions: same slugs, keep newlines, in the **Captions** box. Caption is the moral. Prompt is the camera.
 - The default book is the demo. It cannot be deleted from the UI.
-- **Parse** before generate. Check the two-shot column.
+- **Parse** before generate. Check the two-shot column. Click a prompt (or Copy) to copy the full assembled text Comfy will get.
 - The table header checkbox selects or clears every slug.
 - **Generate selected** uses the checked rows and always queues a new version. It Parses first. Skip only applies to Generate missing.
 - Assembler order: **ink, layout line, closer (if any), Book wall**. Cast lock and stills sentences are not auto-inserted.

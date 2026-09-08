@@ -82,7 +82,7 @@ MOTION: Body, boots, pack, debris, the beat.
 
 Captions use the same slugs and keep newlines. Caption is the moral; prompt is the camera. Do not paste captions into the prompt wall. Do not paste ink, closer, sampler, or `aethernouveau`.
 
-**Parse** before you generate. The table header checkbox selects or clears every slug. **Generate selected** uses the checked rows and always queues a **new version**, even if this book already has plates. It Parses first. **Generate missing** honors skip. **Generate all** does every plate. Default: 2 seeds per plate (`batch_size = 1` in the graph).
+**Parse** before you generate. The table header checkbox selects or clears every slug. Click a prompt (or Copy) to copy the full assembled text Comfy will get — the hover hint cannot be selected. **Generate selected** uses the checked rows and always queues a **new version**, even if this book already has plates. It Parses first. **Generate missing** honors skip. **Generate all** does every plate. Default: 2 seeds per plate (`batch_size = 1` in the graph).
 
 The app assembles each plate as **ink, layout line, closer (if that box has text), Book wall**. Cast lock and stills sentences are not auto-inserted. Hide the eyes. Working verb: **caught in the instant of [verb]**.
 

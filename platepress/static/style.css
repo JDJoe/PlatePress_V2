@@ -211,7 +211,16 @@ th, td { border-bottom: 1px solid var(--line); padding: 0.4rem 0.3rem; text-alig
 .thumbs figcaption { font-size: 12px; color: var(--muted); margin: 0.35rem 0; word-break: break-all; }
 .tiny { font-size: 12px; color: var(--muted); }
 code { font-size: 12px; }
-.preview { max-height: 4.2em; overflow: hidden; color: var(--muted); }
+.preview { color: var(--muted); }
+.preview > span {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+td.copy-prompt { cursor: pointer; }
+td.copy-prompt:hover { color: var(--fg); }
+.copy-assembled { display: block; margin-top: 0.25rem; font-size: 12px; padding: 0.2rem 0.45rem; }
 .ref-row { display: flex; gap: 0.6rem; flex-wrap: wrap; margin: 0.4rem 0; }
 .ref-slot {
   width: 160px;

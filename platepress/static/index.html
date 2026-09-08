@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Plate Press</title>
-  <link rel="stylesheet" href="/static/style.css?v=19" />
+  <link rel="stylesheet" href="/static/style.css?v=20" />
 </head>
 <body>
   <header>
@@ -160,6 +160,7 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
       <button class="act" id="gen-missing">Generate missing</button>
       <button class="act" id="gen-all">Generate all</button>
       <button class="act" id="gen-sel">Generate selected</button>
+      <p class="tiny">After Parse, the prompt column is the assembled text Comfy will get. Click it (or Copy) for the full prompt — the hover hint cannot be copied.</p>
       <table>
         <thead>
           <tr>
@@ -239,7 +240,7 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
         <li>Hide the eyes. Working verb: <strong>caught in the instant of [verb]</strong>.</li>
         <li>Captions: same slugs, keep newlines, in the <strong>Captions</strong> box. Caption is the moral. Prompt is the camera.</li>
         <li>The default book is the demo. It cannot be deleted from the UI.</li>
-        <li><strong>Parse</strong> before generate. Check the two-shot column.</li>
+        <li><strong>Parse</strong> before generate. Check the two-shot column. Click a prompt (or Copy) to copy the full assembled text Comfy will get.</li>
         <li>The table header checkbox selects or clears every slug.</li>
         <li><strong>Generate selected</strong> uses the checked rows and always queues a new version. It Parses first. Skip only applies to Generate missing.</li>
         <li>Assembler: <strong>ink, layout line, closer (if any), Book wall</strong>. Cast lock and stills sentences are not auto-inserted.</li>
@@ -278,6 +279,6 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
       </ul>
     </section>
   </main>
-  <script src="/static/app.js?v=40"></script>
+  <script src="/static/app.js?v=41"></script>
 </body>
 </html>

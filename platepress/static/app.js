@@ -401,6 +401,15 @@ function renderCast() {
   });
 }
 
+async function copyAssembled(text, slug) {
+  try {
+    await navigator.clipboard.writeText(text || "");
+    showBanner(slug ? "copied " + slug : "copied prompt", "ok");
+  } catch (e) {
+    showBanner(e.message, "err");
+  }
+}
+
 function renderPreview(plates, warnings, checkedSlugs) {
   const tb = $("preview");
   tb.innerHTML = "";
@@ -410,14 +419,50 @@ function renderPreview(plates, warnings, checkedSlugs) {
     const warn = [pane, p.risky_twoshot ? "two-shot" : "", (p.warnings || []).join("; ")]
       .filter(Boolean).join("; ");
     const on = !checkedSlugs || checkedSlugs.some((s) => s === p.slug);
-    tr.innerHTML = `
-      <td><input type="checkbox" data-slug="${p.slug}" ${on ? "checked" : ""} /></td>
-      <td><code>${p.slug}</code></td>
-      <td>${(p.character_ids || []).join(", ")}</td>
-      <td>${p.metaphor || ""}</td>
-      <td class="${p.risky_twoshot ? "risky" : ""}">${warn}</td>
-      <td class="preview" title="${(p.assembled || "").replaceAll('"', "&quot;")}">${(p.assembled || "").slice(0, 180)}</td>
-    `;
+    const assembled = p.assembled || "";
+
+    const tdCheck = document.createElement("td");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.dataset.slug = p.slug;
+    if (on) cb.checked = true;
+    tdCheck.appendChild(cb);
+
+    const tdSlug = document.createElement("td");
+    const code = document.createElement("code");
+    code.textContent = p.slug;
+    tdSlug.appendChild(code);
+
+    const tdCast = document.createElement("td");
+    tdCast.textContent = (p.character_ids || []).join(", ");
+
+    const tdMeta = document.createElement("td");
+    tdMeta.textContent = p.metaphor || "";
+
+    const tdWarn = document.createElement("td");
+    tdWarn.textContent = warn;
+    if (p.risky_twoshot) tdWarn.className = "risky";
+
+    const tdPrompt = document.createElement("td");
+    tdPrompt.className = "preview" + (assembled ? " copy-prompt" : "");
+    const snippet = document.createElement("span");
+    snippet.textContent = assembled.slice(0, 180);
+    tdPrompt.appendChild(snippet);
+    if (assembled) {
+      tdPrompt.title = "Click to copy the full assembled prompt";
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "act ghost copy-assembled";
+      btn.textContent = "Copy";
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        copyAssembled(assembled, p.slug);
+      });
+      tdPrompt.appendChild(btn);
+      tdPrompt.addEventListener("click", () => copyAssembled(assembled, p.slug));
+    }
+
+    tr.append(tdCheck, tdSlug, tdCast, tdMeta, tdWarn, tdPrompt);
     tb.appendChild(tr);
   });
   slugBoxes().forEach((el) => el.addEventListener("change", syncSlugAll));
