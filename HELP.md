@@ -13,7 +13,7 @@ Also in the app: **Help** tab. The header always shows the open book.
 
 ## Settings
 
-Ink, layout line, closer, NEG, LoRA, and stills-on/off are **shared**. Cast, story, and plates belong to the open book.
+Ink, layout line, closer, NEG, **UNET, LoRAs**, and stills-on/off are **shared Settings** (not stored on the book). Cast, story, plates, and the book’s API workflow belong to the open book.
 
 - **Test connection** first.
 - **Style cards are the mode.** There is no separate Plate layout radio.
@@ -25,10 +25,10 @@ Ink, layout line, closer, NEG, LoRA, and stills-on/off are **shared**. Cast, sto
 - **NEG** is the negative prompt.
 - **Send character stills** is off unless you check it. On: if the slug names a Cast token and that card has a still, the file is `image1` (second named body → `image2`). No still on the card → no image, same graph, unused LoadImage nodes dropped. Write `REFERENCE: use picture1…` in the Book wall yourself; the app does not add that sentence.
 - **Stills are cutouts** is off unless you check it. The cutout sentence is editable. It is not stuffed into the prompt unless you put it on the wall.
-- **Model and LoRAs** — **Load lists from Comfy** and pick the exact UNETLoader name. Combo name is the listed folder plus the listed file (`KREA2/krea2_turbo_bf16.safetensors`). Softlinks keep those names; do not follow them. Bare filenames fail. Must be a Krea 2 UNET. Up to four LoRAs. CLIP and VAE stay as in the graph. Folders are a fallback if Comfy is down. Do not export a new API workflow.
+- **Model and LoRAs** — **Load lists from Comfy** and pick the exact UNETLoader name. Combo name is the listed folder plus the listed file (`KREA2/krea2_turbo_bf16.safetensors`). Softlinks keep those names. Must be a Krea 2 UNET. Shared Settings — not saved on the book.
 - Do not touch sampler unless you mean it. Factory: 8 steps, CFG 1, euler, beta.
 
-API graph: `Krea2T_V3_ref_clean01-API.json` (text and stills). Per book you can pick another API JSON based on that default (extra nodes, different sampler, and so on). Drop files in `platepress/workflows/` or the book’s `workflows/` folder. Plate Press still fills prompt, seed, UNET, LoRAs, and the save prefix.
+API graph: `Krea2T_V3_ref_clean01-API.json` (text and stills). **Per book:** open that default in Comfy, change nodes or parameters, **Save (API Format)**, drop the JSON in this book’s `workflows/` folder (or shared `platepress/workflows/`), pick it on the Book page. Extra nodes stay. The app still fills prompt, seed, Settings UNET/LoRAs, and the save prefix.
 
 ## Cast
 

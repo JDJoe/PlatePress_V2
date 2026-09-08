@@ -21,7 +21,9 @@ TAIL: empty on Bos. Two-pane card fills “each pane is its own scene…”.
 
 Assembler now: **STYLE → layout → [closer if any] → Book wall**
 
-Settings **Model and LoRAs**: Load lists from Comfy. Combo name is the listed folder plus the listed file (`KREA2/krea2_turbo_bf16.safetensors`). Softlinks keep those names. Do not export a new API graph to change UNET or LoRAs. CLIP and VAE stay. Must be Krea 2.
+Settings **Model and LoRAs** are shared (not stored on the book). Load lists from Comfy. Combo name is the listed folder plus the listed file (`KREA2/krea2_turbo_bf16.safetensors`). Softlinks keep those names. CLIP and VAE stay. Must be Krea 2.
+
+**API workflow** is per book. Open the default V3 graph in Comfy, change nodes or parameters, Save (API Format), drop the JSON in that book’s `workflows/` folder, pick it on the Book page. Extra nodes stay. The app still fills prompt, seed, Settings UNET/LoRAs, and the save prefix.
 
 ## Cast lock
 

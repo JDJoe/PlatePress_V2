@@ -34,7 +34,7 @@ Books live as folders under `platepress/books/<id>/` (JSON, walls, stills, plate
 
 ## Settings (shared)
 
-Ink, closer, negatives, LoRA, Comfy host, and **Send character stills** apply to whichever book is open. Cast, story, and plates do not — those stay in that book’s folder. **World closer** is empty on Bos; the two-pane card fills the pane closer.
+Ink, closer, negatives, **UNET, LoRAs**, Comfy host, and **Send character stills** are **shared Settings**. They are not stored on the book. Cast, story, plates, and the book’s API workflow stay in that book’s folder. **World closer** is empty on Bos; the two-pane card fills the pane closer.
 
 **Style cards are the mode.** Click one; the boxes stay editable.
 
@@ -49,7 +49,7 @@ There is no separate Plate layout radio. The card *is* the mode.
 
 Factory sampler (leave it unless you mean it): 8 steps, CFG 1, euler, beta.
 
-**Model and LoRAs** live in Settings. **Load lists from Comfy** and pick the exact UNETLoader name. Combo name is the listed folder plus the listed file (`KREA2/krea2_turbo_bf16.safetensors`). Softlinks keep those names; the app does not follow them to the real path. Bare filenames fail. Must be a **Krea 2** UNET. Up to four LoRAs (rgthree stack). CLIP and VAE stay as in the graph. Folders are only a fallback if Comfy is down.
+**Model and LoRAs** live in Settings (shared). **Load lists from Comfy** and pick the exact UNETLoader name. Combo name is the listed folder plus the listed file (`KREA2/krea2_turbo_bf16.safetensors`). Softlinks keep those names. Bare filenames fail. Must be a **Krea 2** UNET. Up to four LoRAs. CLIP and VAE stay as in the graph. Changing UNET/LoRA here does not write them into the book.
 
 ## Cast (per book)
 
@@ -88,7 +88,7 @@ The app assembles each plate as **ink, layout line, closer (if that box has text
 
 Two-pane: one checked row uses the next slug as the right pane. Write a full shot on each slug.
 
-**API workflow** is per book. Default is Settings V3. Drop extra API JSON (based on the default graph) in `platepress/workflows/` or `platepress/books/<id>/workflows/`. Extra nodes stay. The app still writes the save prefix so Queue can find plates.
+**API workflow** is per book. Default is Settings V3. To customize: open the default graph in Comfy, change nodes or parameters, **Save (API Format)**, put the JSON in this book’s `workflows/` folder (or shared `platepress/workflows/`), then pick it on the Book page. Extra nodes stay. The app still fills prompt, seed, Settings UNET/LoRAs, and the save prefix.
 
 **Copy instructions for your LLM** copies the shipped sheet plus this book’s locks (identity notes, not prompt prefix).
 
