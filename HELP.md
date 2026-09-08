@@ -28,7 +28,7 @@ Ink, layout line, closer, NEG, LoRA, and stills-on/off are **shared**. Cast, sto
 - **Model and LoRAs** — **Load lists from Comfy** and pick the exact UNETLoader name. Combo name is the listed folder plus the listed file (`KREA2/krea2_turbo_bf16.safetensors`). Softlinks keep those names; do not follow them. Bare filenames fail. Must be a Krea 2 UNET. Up to four LoRAs. CLIP and VAE stay as in the graph. Folders are a fallback if Comfy is down. Do not export a new API workflow.
 - Do not touch sampler unless you mean it. Factory: 8 steps, CFG 1, euler, beta.
 
-API graph: `Krea2T_V3_ref_clean01-API.json` (text and stills).
+API graph: `Krea2T_V3_ref_clean01-API.json` (text and stills). Per book you can pick another API JSON based on that default (extra nodes, different sampler, and so on). Drop files in `platepress/workflows/` or the book’s `workflows/` folder. Plate Press still fills prompt, seed, UNET, LoRAs, and the save prefix.
 
 ## Cast
 

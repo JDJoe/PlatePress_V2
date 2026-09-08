@@ -12,7 +12,7 @@ Pages: **Settings** · **Cast** · **Book** · **Queue / Letter** · **Help**. O
 - ComfyUI at `http://127.0.0.1:8188` (configurable)
 - Krea2 **Turbo** (`KREA2/krea2_turbo_bf16.safetensors`)
 - Style LoRA in Settings (factory: `Krea2-aethernouveau-04`; not bundled)
-- API workflow JSON ships in the repo: `Krea2T_V3_ref_clean01-API.json` (text and stills; unused LoadImage nodes are dropped). Do not export a new API graph to change the UNET or LoRAs.
+- API workflow JSON ships in the repo: `Krea2T_V3_ref_clean01-API.json` (text and stills; unused LoadImage nodes are dropped). To change UNET or LoRAs, use Settings — do not export a new graph for that. To add nodes or other graph settings, copy the default, **Save (API Format)** in Comfy, and pick it on the Book page.
 
 ## Install
 
@@ -87,6 +87,8 @@ Captions use the same slugs and keep newlines. Caption is the moral; prompt is t
 The app assembles each plate as **ink, layout line, closer (if that box has text), Book wall**. Cast lock and stills sentences are not auto-inserted. Hide the eyes. Working verb: **caught in the instant of [verb]**.
 
 Two-pane: one checked row uses the next slug as the right pane. Write a full shot on each slug.
+
+**API workflow** is per book. Default is Settings V3. Drop extra API JSON (based on the default graph) in `platepress/workflows/` or `platepress/books/<id>/workflows/`. Extra nodes stay. The app still writes the save prefix so Queue can find plates.
 
 **Copy instructions for your LLM** copies the shipped sheet plus this book’s locks (identity notes, not prompt prefix).
 

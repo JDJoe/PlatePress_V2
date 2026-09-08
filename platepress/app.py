@@ -39,6 +39,8 @@ from .store import (
     empty_book,
     is_protected_book,
     iter_image_files,
+    job_workflows,
+    list_api_workflows,
     list_books,
     list_weights,
     load_book,
@@ -47,6 +49,7 @@ from .store import (
     match_combo_name,
     normalize_loras,
     new_id,
+    portable_path,
     safe_book_id,
     save_book,
     save_settings,
@@ -432,6 +435,17 @@ def test_comfy() -> dict[str, Any]:
     return {"ok": ok, "message": msg}
 
 
+@app.get("/api/workflows")
+def get_workflows() -> dict[str, Any]:
+    s = _settings()
+    book = load_book(s)
+    return {
+        "default": s.get("workflow_text") or "",
+        "selected": book.get("workflow") or "",
+        "workflows": list_api_workflows(s, book.get("id")),
+    }
+
+
 @app.post("/api/weights")
 def post_weights(body: dict[str, Any]) -> dict[str, Any]:
     """Prefer Comfy's UNETLoader / LoRA combo lists so names match on queue."""
@@ -501,7 +515,15 @@ def post_book(body: dict[str, Any]) -> dict[str, Any]:
         "plates",
         "workflow",
     ):
-        if k in body:
+        if k not in body:
+            continue
+        if k == "workflow":
+            raw = body[k]
+            if raw:
+                book[k] = portable_path(raw, follow_symlinks=False)
+            else:
+                book[k] = None
+        else:
             book[k] = body[k]
     if "characters" in body:
         _assert_unique_names(book.get("characters") or [])
@@ -630,8 +652,9 @@ def post_generate(body: dict[str, Any]) -> dict[str, Any]:
     if not ok:
         return {"ok": False, "error": msg, "queued": 0}
 
-    text_wf = Path(s["workflow_text"])
-    ref_wf = Path(s.get("workflow_ref") or "")
+    text_wf, ref_wf = job_workflows(s, book)
+    if str(book.get("workflow") or "").strip() and not text_wf.is_file():
+        raise HTTPException(400, f"book workflow JSON missing: {text_wf}")
     per = int(s.get("images_per_plate") or 2)
     jobs: list[dict[str, Any]] = []
     skipped = 0

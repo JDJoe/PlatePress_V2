@@ -451,6 +451,8 @@ async function saveBookSilent() {
   book.title = $("title").value;
   book.prompts_raw = $("prompts_raw").value;
   book.captions_raw = $("captions_raw").value;
+  const wf = $("book-workflow");
+  if (wf) book.workflow = wf.value || null;
   const r = await j("/api/book", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -460,12 +462,41 @@ async function saveBookSilent() {
   showCurrentBook();
 }
 
+async function fillWorkflowSelect() {
+  const sel = $("book-workflow");
+  if (!sel) return;
+  const r = await j("/api/workflows");
+  const selected = book.workflow || r.selected || "";
+  const items = r.workflows || [];
+  sel.innerHTML = "";
+  const def = document.createElement("option");
+  def.value = "";
+  def.textContent = "Default (Settings V3)";
+  sel.appendChild(def);
+  items.forEach((w) => {
+    const o = document.createElement("option");
+    o.value = w.path;
+    const tag = w.source === "book" ? "this book" : w.source === "settings" ? "settings" : "shared";
+    o.textContent = w.name + " (" + tag + ")";
+    sel.appendChild(o);
+  });
+  const paths = items.map((w) => w.path);
+  if (selected && paths.indexOf(selected) < 0) {
+    const o = document.createElement("option");
+    o.value = selected;
+    o.textContent = selected;
+    sel.appendChild(o);
+  }
+  sel.value = selected || "";
+}
+
 async function loadBook() {
   const r = await j("/api/book");
   book = r.book;
   $("title").value = book.title || "";
   $("prompts_raw").value = book.prompts_raw || "";
   $("captions_raw").value = book.captions_raw || "";
+  await fillWorkflowSelect();
   renderCast();
   renderPreview(book.plates || [], []);
   if (r.notice) showBanner(r.notice, "warn");
@@ -856,6 +887,21 @@ $("save-book").onclick = async () => {
   await saveBookSilent();
   showBanner("book saved", "ok");
 };
+if ($("refresh-workflows")) {
+  $("refresh-workflows").onclick = async () => {
+    await fillWorkflowSelect();
+    showBanner("workflow list refreshed", "ok");
+  };
+}
+if ($("book-workflow")) {
+  $("book-workflow").addEventListener("change", async () => {
+    await saveBookSilent();
+    showBanner(
+      book.workflow ? "using " + book.workflow : "using Settings default workflow",
+      "ok"
+    );
+  });
+}
 $("title").addEventListener("input", () => {
   book.title = $("title").value;
   showCurrentBook();

@@ -293,6 +293,7 @@ def book_dir(settings: dict[str, Any], book_id: str | None = None, create: bool 
         (d / "lettered").mkdir(exist_ok=True)
         (d / "refs").mkdir(exist_ok=True)
         (d / "export").mkdir(exist_ok=True)
+        (d / "workflows").mkdir(exist_ok=True)
     return d
 
 
@@ -309,6 +310,71 @@ def empty_book(book_id: str = "default") -> dict[str, Any]:
         "captions_raw": "",
         "runs": [],
     }
+
+
+def is_api_workflow(path: Path) -> bool:
+    """True for Comfy API JSON (class_type nodes). UI graphs have nodes+links."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return False
+    if not isinstance(data, dict) or not data:
+        return False
+    if "nodes" in data and "links" in data:
+        return False
+    return any(isinstance(v, dict) and v.get("class_type") for v in data.values())
+
+
+def list_api_workflows(settings: dict[str, Any], book_id: str | None = None) -> list[dict[str, str]]:
+    """API graphs: Settings default, repo *-API.json, platepress/workflows/, this book."""
+    seen: set[str] = set()
+    out: list[dict[str, str]] = []
+
+    def add(path: Path, source: str) -> None:
+        if not path.is_file() or not is_api_workflow(path):
+            return
+        try:
+            key = str(path.resolve())
+        except OSError:
+            key = str(path)
+        if key in seen:
+            return
+        seen.add(key)
+        out.append({
+            "path": portable_path(path, follow_symlinks=False),
+            "name": path.name,
+            "source": source,
+        })
+
+    for key in ("workflow_text", "workflow_ref"):
+        raw = str(settings.get(key) or "").strip()
+        if raw:
+            add(resolve_user_path(raw), "settings")
+    for p in sorted(ROOT.glob("*-API.json")):
+        add(p, "shared")
+    shared = PKG / "workflows"
+    if shared.is_dir():
+        for p in sorted(shared.glob("*.json")):
+            add(p, "shared")
+    bid = book_id or settings.get("current_book")
+    if bid:
+        bw = output_root(settings) / bid / "workflows"
+        if bw.is_dir():
+            for p in sorted(bw.glob("*.json")):
+                add(p, "book")
+    return out
+
+
+def job_workflows(settings: dict[str, Any], book: dict[str, Any]) -> tuple[Path, Path]:
+    """Book API graph overrides Settings for both text and stills."""
+    raw = str(book.get("workflow") or "").strip()
+    if raw:
+        p = resolve_user_path(raw)
+        return p, p
+    text_wf = resolve_user_path(str(settings.get("workflow_text") or ""))
+    ref_raw = str(settings.get("workflow_ref") or "").strip()
+    ref_wf = resolve_user_path(ref_raw) if ref_raw else Path()
+    return text_wf, ref_wf
 
 
 def load_book(settings: dict[str, Any], book_id: str | None = None, create: bool = True) -> dict[str, Any]:

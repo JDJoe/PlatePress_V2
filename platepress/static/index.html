@@ -123,6 +123,17 @@
       <label>Book title</label>
       <input id="title" type="text" />
       <p class="tiny" id="book-id"></p>
+      <label>API workflow</label>
+      <div class="row">
+        <div>
+          <select id="book-workflow"></select>
+        </div>
+        <div style="max-width:8rem">
+          <label>&nbsp;</label>
+          <button type="button" class="act ghost" id="refresh-workflows">Refresh list</button>
+        </div>
+      </div>
+      <p class="tiny">Default is the Settings V3 graph. Edit a copy in Comfy, <strong>Save (API Format)</strong>, drop the JSON in <code>platepress/workflows/</code> (shared) or this book’s <code>workflows/</code> folder. Must be based on the default (same node types). Extra nodes are kept. Plate Press still fills prompt, seed, UNET, LoRAs, and the save prefix so Queue can find files.</p>
       <p class="tiny">Slug on its own line (<code>p01_wreck</code>). Next line is the Cast token if a still should attach. Then the shot headings. Settings only prepends ink and the layout line. Do not paste aethernouveau here. Say spacecraft, not ship.</p>
       <p class="tiny">Plate template — copy into the wall:</p>
       <pre id="plate-template" class="plate-template">p01_slug
@@ -193,7 +204,8 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
         <li><strong>Ink</strong> and <strong>Layout line</strong> are prepended to every plate. <strong>World closer</strong> only if that box has text (empty on Bos).</li>
         <li><strong>Send character stills</strong> is off unless you check it. On: named Cast token with a still → <code>image1</code>. Write <code>REFERENCE: use picture1…</code> on the wall; the app does not add that sentence. No still → no image.</li>
         <li><strong>Stills are cutouts</strong> is off unless you check it. The sentence is editable and is not auto-inserted.</li>
-        <li><strong>Model and LoRAs</strong> — <strong>Load lists from Comfy</strong> and pick the exact UNETLoader name. Combo name is the listed folder plus the listed file (<code>KREA2/krea2_turbo_bf16.safetensors</code>). Softlinks keep those names. Must be a Krea 2 UNET. Up to four LoRAs. CLIP and VAE stay. Folders are a fallback if Comfy is down. Do not export a new API workflow.</li>
+        <li><strong>Model and LoRAs</strong> — <strong>Load lists from Comfy</strong> and pick the exact UNETLoader name. Combo name is the listed folder plus the listed file (<code>KREA2/krea2_turbo_bf16.safetensors</code>). Softlinks keep those names. Must be a Krea 2 UNET. Up to four LoRAs. CLIP and VAE stay. Folders are a fallback if Comfy is down.</li>
+        <li><strong>API workflow</strong> is per book. Default is Settings V3. Drop extra API JSON (based on the default graph) in <code>platepress/workflows/</code> or the book’s <code>workflows/</code> folder. Extra nodes stay. The save prefix is still filled by the app.</li>
         <li>Do not touch sampler unless you mean it. Factory: 8 steps, CFG 1, euler, beta.</li>
       </ul>
 
@@ -266,6 +278,6 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
       </ul>
     </section>
   </main>
-  <script src="/static/app.js?v=39"></script>
+  <script src="/static/app.js?v=40"></script>
 </body>
 </html>

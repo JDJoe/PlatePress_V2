@@ -340,6 +340,36 @@ def test_normalize_loras_from_legacy_fields():
     assert "krea2" in s["unet_name"].lower()
 
 
+def test_list_api_workflows_skips_ui_graph():
+    from platepress import store
+
+    s = store.default_settings()
+    items = store.list_api_workflows(s)
+    names = [i["name"] for i in items]
+    assert "Krea2T_V3_ref_clean01-API.json" in names
+    assert "Krea2T_V3_ref_clean01.json" not in names
+
+
+def test_job_workflows_book_override(tmp_path):
+    from platepress import store
+
+    s = store.default_settings()
+    s["output_root"] = str(tmp_path / "books")
+    custom = tmp_path / "books" / "default" / "workflows"
+    custom.mkdir(parents=True)
+    src = store.ROOT / "Krea2T_V3_ref_clean01-API.json"
+    dest = custom / "book_custom-API.json"
+    dest.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+    book = {"workflow": str(dest)}
+    text_wf, ref_wf = store.job_workflows(s, book)
+    assert text_wf == ref_wf
+    assert text_wf.name == "book_custom-API.json"
+    default_text, _ = store.job_workflows(s, {"workflow": None})
+    assert default_text.name == "Krea2T_V3_ref_clean01-API.json"
+    listed = store.list_api_workflows(s, "default")
+    assert any(i["name"] == "book_custom-API.json" for i in listed)
+
+
 def test_match_combo_name_unique_basename():
     from platepress.store import match_combo_name
 
