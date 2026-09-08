@@ -4,7 +4,7 @@ Load this next session. Do not restart from Noodles / Beef / Widow.
 
 ## Stack
 
-Plate Press prepends **ink + layout line** (and **closer** only if that Settings box has text). Cast lock is **not** pasted into the prompt. NEG is separate.  
+Plate Press prepends **ink + layout line** (and **closer** only if that Settings box has text). Cast lock is pasted only when stills are off. NEG is separate.  
 **Book wall = shot only** (REFERENCE / SHOT / CAMERA / LOCATION / ACTION / GAZE / HANDS / MOTION). Do not repeat Moebius, cream paper, no text, no logos.
 
 Official Krea 2 order (use it inside the scene):  
@@ -19,7 +19,7 @@ aethernouveau. Ink and watercolor by Moebius, thin black outlines, muted ochre, 
 Layout: one undivided plate.  
 TAIL: empty on Bos. Two-pane card fills “each pane is its own scene…”.
 
-Assembler now: **STYLE → layout → [closer if any] → Book wall**
+Assembler now: **STYLE → layout → [closer if any] → [Cast lock if stills off] → Book wall**
 
 Settings **Model and LoRAs** are shared (not stored on the book). Load lists from Comfy. Combo name is the listed folder plus the listed file (`KREA2/krea2_turbo_bf16.safetensors`). Softlinks keep those names. CLIP and VAE stay. Must be Krea 2.
 
@@ -27,7 +27,7 @@ Settings **Model and LoRAs** are shared (not stored on the book). Load lists fro
 
 ## Cast lock
 
-Lock = face + suit + pack for you and the LLM sheet. The app does **not** paste it into the Comfy prompt. Put look, costume, and `picture1` on the Book wall.
+Lock = face + suit + pack. Stills off: pasted into the prompt. Stills on: not pasted; the still is identity. Put pose and `picture1` on the Book wall.
 
 **Never put in the lock:**
 - looking back over her shoulder

@@ -56,7 +56,7 @@ Factory sampler (leave it unless you mean it): 8 steps, CFG 1, euler, beta.
 Each book has its own roster. Five books can all have **ANDROID**; they are five different people.
 
 - **Name** is the token in the story wall: `PILOT` or `{PILOT}`. Whole word only — `PILOT1` does not match `PILOT`, and the still will not attach.
-- **Lock** is face + suit + pack for you and for the LLM sheet. The app does **not** paste it into the Comfy prompt. Put look, costume, and `picture1` on the Book wall. Do not put posing, standing, or helmet-hug in the lock.
+- **Lock** is face + suit + pack. Stills off: the lock is pasted into the prompt. Stills on: the lock is not pasted; the still is identity. Put pose and `picture1` on the Book wall. Do not put posing, standing, or helmet-hug in the lock.
 - A name like `PATRON` only does something if that card exists on this book.
 - 0–3 local stills per card. One body. Frontal portrait stills make the figure find the camera. Two-shots are flagged; faces fuse.
 - **Lock seed** on a Queue thumb to reuse that seed later.
@@ -84,7 +84,7 @@ Captions use the same slugs and keep newlines. Caption is the moral; prompt is t
 
 **Parse** before you generate. The table header checkbox selects or clears every slug. Click a prompt (or Copy) to copy the full assembled text Comfy will get — the hover hint cannot be selected. **Generate selected** uses the checked rows and always queues a **new version**, even if this book already has plates. It Parses first. **Generate missing** honors skip. **Generate all** does every plate. Default: 2 seeds per plate (`batch_size = 1` in the graph).
 
-The app assembles each plate as **ink, layout line, closer (if that box has text), Book wall**. Cast lock and stills sentences are not auto-inserted. Hide the eyes. Working verb: **caught in the instant of [verb]**.
+The app assembles each plate as **ink, layout line, closer (if that box has text), Cast lock if stills are off, Book wall**. When stills are on, the lock is not pasted. Stills sentences are not auto-inserted. Hide the eyes. Working verb: **caught in the instant of [verb]**.
 
 Two-pane: one checked row uses the next slug as the right pane. Write a full shot on each slug.
 

@@ -1,4 +1,4 @@
-"""Story wall + caption wall → plates. The app assembles ink, layout, optional closer, Book wall."""
+"""Story wall + caption wall → plates. Ink, layout, closer, lock-if-no-still, Book wall."""
 
 from __future__ import annotations
 
@@ -287,6 +287,10 @@ def _join_clauses(*parts: str) -> str:
     return " ".join(_clause(p) for p in parts if p and str(p).strip())
 
 
+def _lock_bits(locks: list[str] | None) -> list[str]:
+    return [x.strip() for x in (locks or []) if x and str(x).strip()]
+
+
 def assemble(
     style: str,
     locks: list[str],
@@ -298,7 +302,10 @@ def assemble(
     layout: str = "one",
     layout_text: str = "",
 ) -> str:
-    """Ink + layout + optional closer + Book wall. Cast lock and stills copy live in the wall."""
+    """Ink + layout + closer + lock-if-no-still + Book wall.
+
+    Stills off (n_pictures=0): paste Cast lock. Stills on: lock stays out; the still is identity.
+    """
     style = style.strip()
     scene = _spacecraft(scene.strip().rstrip(".,; "))
     lt = (layout_text or LAYOUT_ONE).strip()
@@ -307,6 +314,8 @@ def assemble(
         bits.append(lt)
     if (tail or "").strip():
         bits.append(tail.strip())
+    if not n_pictures:
+        bits.extend(_lock_bits(locks))
     if scene:
         bits.append(scene)
     return _join_clauses(*bits)
@@ -325,7 +334,12 @@ def extract_inline_panes(scene: str) -> tuple[str, str] | None:
 
 def _pane_block(label: str, scene: str, locks: list[str], ref_n: int, cutout: bool) -> str:
     scene = _spacecraft(scene.strip().rstrip(".,; "))
-    inner = _join_clauses(scene)
+    parts: list[str] = []
+    if not ref_n:
+        parts.extend(_lock_bits(locks))
+    if scene:
+        parts.append(scene)
+    inner = _join_clauses(*parts)
     return f"{label}: {inner}" if inner else f"{label}:"
 
 
@@ -342,7 +356,7 @@ def assemble_pair(
     cutout: bool = False,
     cutout_text: str = "",
 ) -> str:
-    """Two different scenes: left pane, right pane. Wall text only in each pane."""
+    """Two different scenes: left pane, right pane. Lock in a pane only if that pane has no still."""
     style = style.strip()
     lt = (layout_text or LAYOUT_SPLIT).strip()
     bits: list[str] = [style]

@@ -173,6 +173,7 @@ function updateAssemblePreview() {
       ? "Left pane: (first slug). Right pane: (next slug)."
       : "",
     ($("tail") && $("tail").value.trim()) || "",
+    ($("send_refs") && $("send_refs").checked) ? "" : "(Cast lock)",
     "(Book wall)",
   ].filter(Boolean);
   box.textContent = bits.join(" ");
@@ -837,6 +838,7 @@ if ($("send_refs")) {
         body: JSON.stringify(readSettings()),
       });
       fillSettings(settings);
+      updateAssemblePreview();
       showBanner(
         settings.send_refs ? "stills ON — Qwen will copy pose and backdrop" : "stills off — text locks only",
         settings.send_refs ? "warn" : "ok"

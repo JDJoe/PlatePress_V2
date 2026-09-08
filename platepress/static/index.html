@@ -203,7 +203,7 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
         <li><strong>Two-pane comic</strong>: consecutive slugs share one image (p1 left, p2 right). Do not write “Left pane” yourself. Each pane is its own scene as written.</li>
         <li>Click a card to fill ink, layout line, and matching negatives. World closer stays empty on Bos; two-pane fills the pane closer. The boxes stay editable.</li>
         <li><strong>Ink</strong> and <strong>Layout line</strong> are prepended to every plate. <strong>World closer</strong> only if that box has text (empty on Bos).</li>
-        <li><strong>Send character stills</strong> is off unless you check it. On: named Cast token with a still → <code>image1</code>. Write <code>REFERENCE: use picture1…</code> on the wall; the app does not add that sentence. No still → no image.</li>
+        <li><strong>Send character stills</strong> is off unless you check it. Off: Cast lock is pasted (text locks only). On: named Cast token with a still → <code>image1</code>, lock not pasted. Write <code>REFERENCE: use picture1…</code> on the wall; the app does not add that sentence. No still → no image, lock is pasted.</li>
         <li><strong>Stills are cutouts</strong> is off unless you check it. The sentence is editable and is not auto-inserted.</li>
         <li><strong>Model and LoRAs</strong> — shared Settings. <strong>Load lists from Comfy</strong> and pick the exact UNETLoader name. Combo name is the listed folder plus the listed file (<code>KREA2/krea2_turbo_bf16.safetensors</code>). Softlinks keep those names. Must be a Krea 2 UNET. Not saved on the book.</li>
         <li><strong>API workflow</strong> is per book. Default is Settings <code>Krea2T_V3_ref_clean03-API.json</code>. Open the default in Comfy, change nodes or parameters, <strong>Save (API Format)</strong>, put the JSON in this book’s <code>workflows/</code> folder, pick it on the Book page. Extra nodes stay. The app still fills prompt, seed, Settings UNET/LoRAs, and the save prefix.</li>
@@ -215,7 +215,7 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
         <li>Cast is per book. Five books can all have ANDROID; they are not the same person.</li>
         <li>Header plus Cast, Book, Queue, and Settings headings show the open book.</li>
         <li>Name is the token on the wall: <code>PILOT</code> or <code>{PILOT}</code>. Whole word only. <code>PILOT1</code> does not match <code>PILOT</code>.</li>
-        <li>Lock is face + suit + pack for you and the LLM sheet. It is <em>not</em> pasted into the Comfy prompt. Put look and <code>picture1</code> on the Book wall.</li>
+        <li>Lock is face + suit + pack. Stills off: pasted into the prompt. Stills on: not pasted; the still is identity. Put pose and <code>picture1</code> on the Book wall.</li>
         <li>A name like <code>PATRON</code> only works if that card exists on this book.</li>
         <li>0–3 local stills per card. One body. Frontal portraits make the figure find the camera.</li>
         <li><strong>Lock seed</strong> on a thumb in Queue, then later plates of that character can reuse it.</li>
@@ -243,7 +243,7 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
         <li><strong>Parse</strong> before generate. Check the two-shot column. Click a prompt (or Copy) to copy the full assembled text Comfy will get.</li>
         <li>The table header checkbox selects or clears every slug.</li>
         <li><strong>Generate selected</strong> uses the checked rows and always queues a new version. It Parses first. Skip only applies to Generate missing.</li>
-        <li>Assembler: <strong>ink, layout line, closer (if any), Book wall</strong>. Cast lock and stills sentences are not auto-inserted.</li>
+        <li>Assembler: <strong>ink, layout line, closer (if any), Cast lock if stills off, Book wall</strong>. Stills sentences are not auto-inserted.</li>
         <li>Two-pane comic: one checked row uses the next slug as the right pane. Write a full shot on each slug.</li>
         <li>Default: 2 random seeds per plate.</li>
         <li><strong>Copy instructions for your LLM</strong> copies the sheet plus current locks (identity notes, not prompt prefix).</li>
@@ -279,6 +279,6 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
       </ul>
     </section>
   </main>
-  <script src="/static/app.js?v=41"></script>
+  <script src="/static/app.js?v=42"></script>
 </body>
 </html>

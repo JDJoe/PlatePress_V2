@@ -23,7 +23,7 @@ Ink, layout line, closer, NEG, **UNET, LoRAs**, and stills-on/off are **shared S
 - **Ink** and **Layout line** are prepended to every plate.
 - **World closer** is empty on Bos. Two-pane fills “each pane is its own scene…”. Prepended only if that box has text.
 - **NEG** is the negative prompt. It is written only if the API graph has a CLIP negative node. The shipped default uses `ConditioningZeroOut` instead, so this box is stored but not sent.
-- **Send character stills** is off unless you check it. On: if the slug names a Cast token and that card has a still, the file is `image1` (second named body → `image2`). No still on the card → no image, same graph, unused LoadImage nodes dropped. Write `REFERENCE: use picture1…` in the Book wall yourself; the app does not add that sentence.
+- **Send character stills** is off unless you check it. Off: Cast lock is pasted into the prompt (text locks only). On: if the slug names a Cast token and that card has a still, the file is `image1` (second named body → `image2`) and the lock is not pasted. No still on the card → no image, lock is pasted. Write `REFERENCE: use picture1…` in the Book wall yourself; the app does not add that sentence.
 - **Stills are cutouts** is off unless you check it. The cutout sentence is editable. It is not stuffed into the prompt unless you put it on the wall.
 - **Model and LoRAs** — **Load lists from Comfy** and pick the exact UNETLoader name. Combo name is the listed folder plus the listed file (`KREA2/krea2_turbo_bf16.safetensors`). Softlinks keep those names. Must be a Krea 2 UNET. Shared Settings — not saved on the book.
 - Do not touch sampler unless you mean it. Factory: 8 steps, CFG 1, euler, beta.
@@ -35,7 +35,7 @@ API graph: `Krea2T_V3_ref_clean03-API.json` (text and stills; `TextEncodeKrea2` 
 - Cast is per book. Five books can all have ANDROID; they are not the same person.
 - Header plus Cast, Book, Queue, and Settings headings show which book you are editing.
 - **Name** is the token on the wall: `PILOT` or `{PILOT}`. It must be a whole word. `PILOT1` does not match `PILOT`, and the still will not attach.
-- **Lock** is face + suit + pack for *you* and for **Copy instructions for your LLM**. The app does **not** paste the lock into the Comfy prompt. Put look, costume, and `picture1` instructions on the Book wall.
+- **Lock** is face + suit + pack. **Stills off:** the lock is pasted into the prompt (text locks only). **Stills on:** the lock is not pasted; the still is identity. Put pose and `picture1` on the Book wall. Do not put posing, standing, or helmet-hug in the lock.
 - Never put posing, standing, cute, helmet-hug, or looking over the shoulder in the lock. Helmet and over-shoulder live on one slug.
 - A name like `PATRON` only works if that card exists on this book.
 - 0–3 local stills per card. One body. Replace still on that card. Frontal portrait stills make the figure find the camera. Prefer a full-body still if you say “costume only.”
@@ -70,7 +70,7 @@ MOTION: Body, boots, pack, debris, the beat.
 - **Parse** before generate. Check the two-shot column. Click a prompt (or Copy) to copy the full assembled text Comfy will get.
 - The table header checkbox selects or clears every slug.
 - **Generate selected** uses the checked rows and always queues a new version. It Parses first. Skip only applies to Generate missing.
-- Assembler order: **ink, layout line, closer (if any), Book wall**. Cast lock and stills sentences are not auto-inserted.
+- Assembler order: **ink, layout line, closer (if any), Cast lock if stills off, Book wall**. Stills sentences are not auto-inserted.
 - Two-pane comic: one checked row uses the next slug as the right pane. Write a full shot on each slug.
 - Default: 2 random seeds per plate.
 - **Copy instructions for your LLM** copies the shipped sheet plus this book’s locks (as identity notes, not as prompt prefix).

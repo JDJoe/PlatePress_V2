@@ -59,7 +59,7 @@ The years did not ask.
     assert r.plates[0].caption.startswith("She had been designed")
     assert "ANDROID" not in r.plates[0].assembled.replace(ANDROID, "")
     assert r.plates[0].assembled.startswith("aethernouveau.")
-    assert ANDROID not in r.plates[0].assembled
+    assert ANDROID in r.plates[0].assembled
     assert "braced in a narrow hold" in r.plates[0].assembled
 
 
@@ -85,7 +85,7 @@ Behind her, the space starts to rip apart, both gauntlets wrenching the short sw
     assert p.named_ids == []
     assert "Use image1" not in p.assembled
     assert "Keep the locked look" not in p.assembled
-    assert ANDROID not in p.assembled
+    assert ANDROID in p.assembled
     assert any("stills not attached" in w for w in r.warnings)
 
 
@@ -100,7 +100,7 @@ p1_cargo
     assert p.named_ids == ["ANDROID"]
     assert "{ANDROID}" not in p.assembled
     assert "ANDROID" not in p.scene_text
-    assert ANDROID not in p.assembled
+    assert ANDROID in p.assembled
 
 
 def test_twoshot_warning():
@@ -113,7 +113,7 @@ ANDROID AUGUR crouched opposite each other over the opened ox-hide crate, the fa
     assert p.risky_twoshot
     assert p.character_ids == ["ANDROID", "AUGUR"]
     assert any("two-shot" in w for w in r.warnings)
-    assert ANDROID not in p.assembled and AUGUR not in p.assembled
+    assert ANDROID in p.assembled and AUGUR in p.assembled
 
 
 def test_caption_matches_padded_slug():
@@ -194,7 +194,7 @@ braced in a narrow hold, both brown gloves on a sealed ox-hide crate, the crate 
     assert r.plates[0].metaphor == "liquid silver"
     assert r.plates[1].metaphor == "gold leaf over black glass"
     assert r.plates[0].assembled.startswith(STYLE)
-    assert ANDROID not in r.plates[0].assembled
+    assert ANDROID in r.plates[0].assembled
     assert r.plates[0].assembled.rstrip(".").endswith("liquid silver")
     assert TAIL.strip() not in r.plates[0].assembled
 
@@ -226,14 +226,21 @@ def test_vessel_words_become_spacecraft():
 def test_assemble_shape():
     text = assemble(STYLE, [ANDROID], "braced in a hold, liquid silver", TAIL)
     assert text.startswith(STYLE)
-    assert ANDROID not in text
+    assert ANDROID in text
     assert "braced in a hold" in text
     assert "No logos." in text
     assert "Keep the locked look" not in text
     assert text.find(TAIL.strip()) < text.find("braced in a hold")
+    assert text.find(ANDROID) < text.find("braced in a hold")
     blank = assemble(STYLE, [ANDROID], "braced in a hold, liquid silver", "")
     assert "No empty studio" not in blank
     assert blank.rstrip(".").endswith("liquid silver")
+
+
+def test_lock_omitted_when_a_still_is_attached():
+    text = assemble(STYLE, [ANDROID], "braced in a hold, liquid silver", "", n_pictures=1)
+    assert ANDROID not in text
+    assert "braced in a hold" in text
 
 
 def test_picture_slots_stay_out_of_the_prompt():
@@ -273,6 +280,18 @@ def test_assemble_pair_two_prompts():
     assert ANDROID not in text
     assert text.find("cargo bay") < text.find("mist")
     assert "two different scenes" in text
+    no_stills = assemble_pair(
+        STYLE,
+        [ANDROID],
+        "hauling a crate in the cargo bay, liquid silver",
+        [ANDROID],
+        "facing colossal figures in the mist, gold leaf over black glass",
+        "",
+        n_left_refs=0,
+        n_right_refs=0,
+    )
+    assert ANDROID in no_stills
+    assert no_stills.find("Left pane:") < no_stills.find("Right pane:")
 
 
 def test_extract_inline_panes():
@@ -369,7 +388,7 @@ def test_assemble_clauses_are_sentences():
 
 def test_assemble_wall_after_settings():
     text = assemble(STYLE, [ANDROID], "hauling the wreck, liquid silver", TAIL)
-    assert ANDROID not in text
+    assert ANDROID in text
     assert text.find(STYLE[:20]) < text.find("hauling the wreck")
     assert text.find(TAIL.strip()[:20]) < text.find("hauling the wreck")
     pair = assemble_pair(
@@ -380,7 +399,7 @@ def test_assemble_wall_after_settings():
         "in the cockpit",
         TAIL,
     )
-    assert ANDROID not in pair and AUGUR not in pair
+    assert ANDROID in pair and AUGUR in pair
     assert pair.find("hauling the wreck") < pair.find("in the cockpit")
 
 
