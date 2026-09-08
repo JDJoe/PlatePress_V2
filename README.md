@@ -28,7 +28,7 @@ python -m platepress.app
 
 Open `http://127.0.0.1:7860`. Settings → **Test connection**.
 
-Paths in settings are relative to the clone (or `~/…`). First run writes `platepress/settings.json` locally (gitignored). Workflow `Krea2T_V3_ref_clean03-API.json` ships in the repo root (UI twin: `Krea2T_V3_ref_clean03.json`). The previous factory graph `Krea2T_V3_ref_clean01-API.json` stays in the repo if you want it on the Book dropdown.
+Paths in settings are relative to the clone (or `~/…`). First run writes `platepress/settings.json` locally (gitignored). Workflow `Krea2T_V3_ref_clean03-API.json` ships in the repo root (UI twin: `Krea2T_V3_ref_clean03.json`).
 
 Books live as folders under `platepress/books/<id>/` (JSON, walls, stills, plates). That folder is gitignored so Maid2 and other live books stay on your machine. The **Bos Sidereal** demo is shipped in `platepress/demo/bos/` (story, captions, ANDROID and AUGUR stills). If `books/default` is missing, the app copies the demo there. The default book cannot be deleted from the UI. Generate plates locally; they are not in the repo.
 

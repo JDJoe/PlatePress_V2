@@ -366,7 +366,7 @@ def test_list_api_workflows_skips_ui_graph():
     names = [i["name"] for i in items]
     assert store.DEFAULT_API_WORKFLOW in names
     assert "Krea2T_V3_ref_clean03.json" not in names
-    assert "Krea2T_V3_ref_clean01-API.json" in names
+    assert "Krea2T_V3_ref_clean01-API.json" not in names
     assert "Krea2T_V3_ref_clean01.json" not in names
 
 

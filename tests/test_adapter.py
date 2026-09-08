@@ -9,7 +9,39 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 V3 = ROOT / DEFAULT_API_WORKFLOW
-V3_PREV = ROOT / "Krea2T_V3_ref_clean01-API.json"
+QWEN_MIN = {
+    "2": {
+        "inputs": {"prompt": "old", "clip": ["7", 1], "image1": ["11", 0]},
+        "class_type": "TextEncodeQwenImageEditPlus",
+        "_meta": {"title": "Prompt + Picture 1/2/3 (no VAE)"},
+    },
+    "3": {
+        "inputs": {"text": "old-neg", "clip": ["7", 1]},
+        "class_type": "CLIPTextEncode",
+        "_meta": {"title": "Negative"},
+    },
+    "7": {
+        "inputs": {"lora_01": "None", "strength_01": 0},
+        "class_type": "Lora Loader Stack (rgthree)",
+    },
+    "8": {
+        "inputs": {
+            "seed": 1,
+            "steps": 8,
+            "cfg": 1,
+            "sampler_name": "euler",
+            "scheduler": "beta",
+            "positive": ["2", 0],
+            "negative": ["3", 0],
+        },
+        "class_type": "KSampler",
+    },
+    "11": {
+        "inputs": {"image": "example.png"},
+        "class_type": "LoadImage",
+        "_meta": {"title": "Picture 1 — identity"},
+    },
+}
 
 
 def test_detect_v3_ref_workflow():
@@ -119,7 +151,7 @@ def test_fill_two_stills_keeps_image2():
 
 
 def test_fill_legacy_qwen_graph_still_works():
-    wf = load_workflow(V3_PREV)
+    wf = QWEN_MIN
     m = detect(wf)
     assert m.positive == "2"
     assert m.negative == "3"
