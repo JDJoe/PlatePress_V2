@@ -20,13 +20,23 @@ def test_detect_v3_ref_workflow():
     assert wf[m.positive]["class_type"] == "TextEncodeKrea2"
     assert m.is_ref_workflow is True
     assert m.load_images == ["11", "12", "13"]
-    assert m.negative is None
+    assert m.negative == "18"
+    assert m.negative_has_text is False
+    assert m.rebalance == "17"
+    assert m.previews == ["15"]
     assert m.sampler == "8"
     assert m.lora == "7"
     assert m.unet == "4"
     assert m.latent == "10"
     assert m.save == "14"
     assert m.ref_method is None
+
+
+def test_load_ui_graph_uses_api_sibling():
+    ui = ROOT / "Krea2T_V3_ref_clean03.json"
+    wf = load_workflow(ui)
+    assert wf["16"]["class_type"] == "TextEncodeKrea2"
+    assert "nodes" not in wf
 
 
 def test_fill_ref_one_image_drops_unused_loaders():
@@ -60,6 +70,8 @@ def test_fill_ref_one_image_drops_unused_loaders():
     assert out["8"]["inputs"]["negative"] == ["18", 0]
     assert out["18"]["class_type"] == "ConditioningZeroOut"
     assert "text" not in out["18"]["inputs"]
+    assert "15" not in out
+    assert "mask2" not in out["16"]["inputs"]
 
 
 def test_fill_no_still_drops_all_loaders():
@@ -76,10 +88,34 @@ def test_fill_no_still_drops_all_loaders():
     )
     assert out["16"]["inputs"]["prompt"] == "hello"
     assert "image1" not in out["16"]["inputs"]
+    assert "image2" not in out["16"]["inputs"]
     assert "11" not in out
     assert "12" not in out
     assert "13" not in out
+    assert "15" not in out
     assert "3" not in out
+    assert "text" not in out["18"]["inputs"]
+
+
+def test_fill_two_stills_keeps_image2():
+    wf = load_workflow(V3)
+    out = fill(
+        wf,
+        positive="hello",
+        negative="neg",
+        seed=1,
+        prefix="PP_x",
+        lora_name="foo.safetensors",
+        lora_strength=0.5,
+        image_names=["a.png", "b.png"],
+    )
+    assert out["16"]["inputs"]["image1"] == ["11", 0]
+    assert out["16"]["inputs"]["image2"] == ["12", 0]
+    assert "image3" not in out["16"]["inputs"]
+    assert out["11"]["inputs"]["image"] == "a.png"
+    assert out["12"]["inputs"]["image"] == "b.png"
+    assert "13" not in out
+    assert out["8"]["inputs"]["positive"] == ["17", 0]
 
 
 def test_fill_legacy_qwen_graph_still_works():
@@ -87,6 +123,7 @@ def test_fill_legacy_qwen_graph_still_works():
     m = detect(wf)
     assert m.positive == "2"
     assert m.negative == "3"
+    assert m.negative_has_text is True
     out = fill(
         wf,
         positive="hello",

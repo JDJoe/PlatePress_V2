@@ -171,11 +171,17 @@ class ComfyClient:
         outputs = history.get("outputs") or {}
         n = 0
         for _nid, out in outputs.items():
+            if not isinstance(out, dict):
+                continue
             for img in out.get("images") or []:
+                if not isinstance(img, dict):
+                    continue
                 if img.get("type") == "temp":
                     continue
-                n += 1
                 filename = img.get("filename") or ""
+                if not filename:
+                    continue
+                n += 1
                 sub = img.get("subfolder") or ""
                 itype = img.get("type") or "output"
                 params = {"filename": filename, "subfolder": sub, "type": itype}
