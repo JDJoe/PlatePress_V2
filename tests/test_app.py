@@ -11,10 +11,10 @@ from platepress.app import app
 def test_portable_paths_are_repo_relative():
     from platepress import store
 
-    rel = store.portable_path(store.ROOT / "Krea2T_V3_ref_clean01-API.json")
-    assert rel == "Krea2T_V3_ref_clean01-API.json"
-    got = store.resolve_user_path("Krea2T_V3_ref_clean01-API.json")
-    assert got == (store.ROOT / "Krea2T_V3_ref_clean01-API.json").resolve()
+    rel = store.portable_path(store.ROOT / store.DEFAULT_API_WORKFLOW)
+    assert rel == store.DEFAULT_API_WORKFLOW
+    got = store.resolve_user_path(store.DEFAULT_API_WORKFLOW)
+    assert got == (store.ROOT / store.DEFAULT_API_WORKFLOW).resolve()
     s = store.default_settings()
     assert not Path(s["workflow_text"]).is_absolute()
     assert not Path(s["output_root"]).is_absolute()
@@ -22,6 +22,8 @@ def test_portable_paths_are_repo_relative():
     assert "/home/" not in s["output_root"]
     assert s["ref_cutout"] is False
     assert s["tail"] == ""
+    assert s["workflow_text"] == store.DEFAULT_API_WORKFLOW
+    assert s["workflow_ref"] == store.DEFAULT_API_WORKFLOW
     assert "krea2" in (s.get("unet_name") or "").lower()
     assert s["loras"] and s["loras"][0]["name"] == s["lora_name"]
     from platepress.defaults import EXAMPLES
@@ -340,12 +342,30 @@ def test_normalize_loras_from_legacy_fields():
     assert "krea2" in s["unet_name"].lower()
 
 
+def test_migrate_default_workflow_leaves_custom():
+    from platepress import store
+
+    s = store.migrate_default_workflow({
+        "workflow_text": "Krea2T_V3_ref_clean01-API.json",
+        "workflow_ref": "/tmp/Krea2T_V3_ref_clean01-API.json",
+    })
+    assert s["workflow_text"] == store.DEFAULT_API_WORKFLOW
+    assert s["workflow_ref"] == store.DEFAULT_API_WORKFLOW
+    custom = store.migrate_default_workflow({
+        "workflow_text": "platepress/workflows/mine-API.json",
+        "workflow_ref": "platepress/workflows/mine-API.json",
+    })
+    assert custom["workflow_text"] == "platepress/workflows/mine-API.json"
+
+
 def test_list_api_workflows_skips_ui_graph():
     from platepress import store
 
     s = store.default_settings()
     items = store.list_api_workflows(s)
     names = [i["name"] for i in items]
+    assert store.DEFAULT_API_WORKFLOW in names
+    assert "Krea2T_V3_ref_clean03.json" not in names
     assert "Krea2T_V3_ref_clean01-API.json" in names
     assert "Krea2T_V3_ref_clean01.json" not in names
 
@@ -357,7 +377,7 @@ def test_job_workflows_book_override(tmp_path):
     s["output_root"] = str(tmp_path / "books")
     custom = tmp_path / "books" / "default" / "workflows"
     custom.mkdir(parents=True)
-    src = store.ROOT / "Krea2T_V3_ref_clean01-API.json"
+    src = store.ROOT / store.DEFAULT_API_WORKFLOW
     dest = custom / "book_custom-API.json"
     dest.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
     book = {"workflow": str(dest)}
@@ -365,7 +385,7 @@ def test_job_workflows_book_override(tmp_path):
     assert text_wf == ref_wf
     assert text_wf.name == "book_custom-API.json"
     default_text, _ = store.job_workflows(s, {"workflow": None})
-    assert default_text.name == "Krea2T_V3_ref_clean01-API.json"
+    assert default_text.name == store.DEFAULT_API_WORKFLOW
     listed = store.list_api_workflows(s, "default")
     assert any(i["name"] == "book_custom-API.json" for i in listed)
 

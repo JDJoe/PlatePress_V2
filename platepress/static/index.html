@@ -133,7 +133,7 @@
           <button type="button" class="act ghost" id="refresh-workflows">Refresh list</button>
         </div>
       </div>
-      <p class="tiny">This book only. Default is Settings V3. Open that graph in Comfy, change nodes or parameters, <strong>Save (API Format)</strong>, drop the JSON in this book’s <code>workflows/</code> folder (or shared <code>platepress/workflows/</code>), Refresh list, pick it. Must be based on the default. Extra nodes stay. Settings UNET/LoRAs still apply. The save prefix is still filled so Queue can find files.</p>
+      <p class="tiny">This book only. Default is Settings <code>Krea2T_V3_ref_clean03-API.json</code>. Open that graph in Comfy, change nodes or parameters, <strong>Save (API Format)</strong>, drop the JSON in this book’s <code>workflows/</code> folder (or shared <code>platepress/workflows/</code>), Refresh list, pick it. Must be based on the default. Extra nodes stay. Settings UNET/LoRAs still apply. The save prefix is still filled so Queue can find files.</p>
       <p class="tiny">Slug on its own line (<code>p01_wreck</code>). Next line is the Cast token if a still should attach. Then the shot headings. Settings only prepends ink and the layout line. Do not paste aethernouveau here. Say spacecraft, not ship.</p>
       <p class="tiny">Plate template — copy into the wall:</p>
       <pre id="plate-template" class="plate-template">p01_slug
@@ -195,7 +195,7 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
 
       <h3>Settings</h3>
       <ul>
-        <li>Ink, layout line, closer, NEG, UNET, LoRAs, and stills-on/off are shared Settings (not stored on the book). Cast, story, plates, and the book’s API workflow belong to the open book.</li>
+        <li>Ink, layout line, closer, NEG, UNET, LoRAs, and stills-on/off are shared Settings (not stored on the book). Cast, story, plates, and the book’s API workflow belong to the open book. Default graph: <code>Krea2T_V3_ref_clean03-API.json</code>. NEG is written only if that graph has a CLIP negative node; the shipped default zeros the negative.</li>
         <li><strong>Test connection</strong> first.</li>
         <li><strong>Style cards are the mode.</strong> There is no Plate layout radio.</li>
         <li><strong>Bos, one plate</strong>: each slug is one image. If that slug contains <code>left pane:</code> / <code>right pane:</code>, only that plate splits.</li>
@@ -205,7 +205,7 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
         <li><strong>Send character stills</strong> is off unless you check it. On: named Cast token with a still → <code>image1</code>. Write <code>REFERENCE: use picture1…</code> on the wall; the app does not add that sentence. No still → no image.</li>
         <li><strong>Stills are cutouts</strong> is off unless you check it. The sentence is editable and is not auto-inserted.</li>
         <li><strong>Model and LoRAs</strong> — shared Settings. <strong>Load lists from Comfy</strong> and pick the exact UNETLoader name. Combo name is the listed folder plus the listed file (<code>KREA2/krea2_turbo_bf16.safetensors</code>). Softlinks keep those names. Must be a Krea 2 UNET. Not saved on the book.</li>
-        <li><strong>API workflow</strong> is per book. Default is Settings V3. Open the default in Comfy, change nodes or parameters, <strong>Save (API Format)</strong>, put the JSON in this book’s <code>workflows/</code> folder, pick it on the Book page. Extra nodes stay. The app still fills prompt, seed, Settings UNET/LoRAs, and the save prefix.</li>
+        <li><strong>API workflow</strong> is per book. Default is Settings <code>Krea2T_V3_ref_clean03-API.json</code>. Open the default in Comfy, change nodes or parameters, <strong>Save (API Format)</strong>, put the JSON in this book’s <code>workflows/</code> folder, pick it on the Book page. Extra nodes stay. The app still fills prompt, seed, Settings UNET/LoRAs, and the save prefix.</li>
         <li>Do not touch sampler unless you mean it. Factory: 8 steps, CFG 1, euler, beta.</li>
       </ul>
 

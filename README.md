@@ -12,7 +12,7 @@ Pages: **Settings** · **Cast** · **Book** · **Queue / Letter** · **Help**. O
 - ComfyUI at `http://127.0.0.1:8188` (configurable)
 - Krea2 **Turbo** (`KREA2/krea2_turbo_bf16.safetensors`)
 - Style LoRA in Settings (factory: `Krea2-aethernouveau-04`; not bundled)
-- API workflow JSON ships in the repo: `Krea2T_V3_ref_clean01-API.json` (text and stills; unused LoadImage nodes are dropped). To change UNET or LoRAs, use Settings — do not export a new graph for that. To add nodes or other graph settings, copy the default, **Save (API Format)** in Comfy, and pick it on the Book page.
+- API workflow JSON ships in the repo: `Krea2T_V3_ref_clean03-API.json` (text and stills; unused LoadImage nodes are dropped). Encode is `TextEncodeKrea2` plus `ConditioningKrea2Rebalance`. Negative is `ConditioningZeroOut` (Settings NEG is not written on this graph). To change UNET or LoRAs, use Settings — do not export a new graph for that. To add nodes or other graph settings, copy the default, **Save (API Format)** in Comfy, and pick it on the Book page.
 
 ## Install
 
@@ -28,7 +28,7 @@ python -m platepress.app
 
 Open `http://127.0.0.1:7860`. Settings → **Test connection**.
 
-Paths in settings are relative to the clone (or `~/…`). First run writes `platepress/settings.json` locally (gitignored). Workflow `Krea2T_V3_ref_clean01-API.json` ships in the repo root (UI twin: `Krea2T_V3_ref_clean01.json`).
+Paths in settings are relative to the clone (or `~/…`). First run writes `platepress/settings.json` locally (gitignored). Workflow `Krea2T_V3_ref_clean03-API.json` ships in the repo root (UI twin: `Krea2T_V3_ref_clean03.json`). The previous factory graph `Krea2T_V3_ref_clean01-API.json` stays in the repo if you want it on the Book dropdown.
 
 Books live as folders under `platepress/books/<id>/` (JSON, walls, stills, plates). That folder is gitignored so Maid2 and other live books stay on your machine. The **Bos Sidereal** demo is shipped in `platepress/demo/bos/` (story, captions, ANDROID and AUGUR stills). If `books/default` is missing, the app copies the demo there. The default book cannot be deleted from the UI. Generate plates locally; they are not in the repo.
 
@@ -88,7 +88,7 @@ The app assembles each plate as **ink, layout line, closer (if that box has text
 
 Two-pane: one checked row uses the next slug as the right pane. Write a full shot on each slug.
 
-**API workflow** is per book. Default is Settings V3. To customize: open the default graph in Comfy, change nodes or parameters, **Save (API Format)**, put the JSON in this book’s `workflows/` folder (or shared `platepress/workflows/`), then pick it on the Book page. Extra nodes stay. The app still fills prompt, seed, Settings UNET/LoRAs, and the save prefix.
+**API workflow** is per book. Default is Settings `Krea2T_V3_ref_clean03-API.json`. To customize: open the default graph in Comfy, change nodes or parameters, **Save (API Format)**, put the JSON in this book’s `workflows/` folder (or shared `platepress/workflows/`), then pick it on the Book page. Extra nodes stay. The app still fills prompt, seed, Settings UNET/LoRAs, and the save prefix. If that graph has a CLIP negative node, Settings NEG is written there. The shipped default zeros the negative instead.
 
 **Copy instructions for your LLM** copies the shipped sheet plus this book’s locks (identity notes, not prompt prefix).
 

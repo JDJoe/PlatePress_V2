@@ -22,13 +22,13 @@ Ink, layout line, closer, NEG, **UNET, LoRAs**, and stills-on/off are **shared S
 - Click a card to fill ink, layout line, and matching negatives. World closer stays empty on Bos; two-pane fills the pane closer. The boxes stay editable.
 - **Ink** and **Layout line** are prepended to every plate.
 - **World closer** is empty on Bos. Two-pane fills “each pane is its own scene…”. Prepended only if that box has text.
-- **NEG** is the negative prompt.
+- **NEG** is the negative prompt. It is written only if the API graph has a CLIP negative node. The shipped default uses `ConditioningZeroOut` instead, so this box is stored but not sent.
 - **Send character stills** is off unless you check it. On: if the slug names a Cast token and that card has a still, the file is `image1` (second named body → `image2`). No still on the card → no image, same graph, unused LoadImage nodes dropped. Write `REFERENCE: use picture1…` in the Book wall yourself; the app does not add that sentence.
 - **Stills are cutouts** is off unless you check it. The cutout sentence is editable. It is not stuffed into the prompt unless you put it on the wall.
 - **Model and LoRAs** — **Load lists from Comfy** and pick the exact UNETLoader name. Combo name is the listed folder plus the listed file (`KREA2/krea2_turbo_bf16.safetensors`). Softlinks keep those names. Must be a Krea 2 UNET. Shared Settings — not saved on the book.
 - Do not touch sampler unless you mean it. Factory: 8 steps, CFG 1, euler, beta.
 
-API graph: `Krea2T_V3_ref_clean01-API.json` (text and stills). **Per book:** open that default in Comfy, change nodes or parameters, **Save (API Format)**, drop the JSON in this book’s `workflows/` folder (or shared `platepress/workflows/`), pick it on the Book page. Extra nodes stay. The app still fills prompt, seed, Settings UNET/LoRAs, and the save prefix.
+API graph: `Krea2T_V3_ref_clean03-API.json` (text and stills; `TextEncodeKrea2` + rebalance; unused LoadImage nodes are dropped). **Per book:** open that default in Comfy, change nodes or parameters, **Save (API Format)**, drop the JSON in this book’s `workflows/` folder (or shared `platepress/workflows/`), pick it on the Book page. Extra nodes stay. The app still fills prompt, seed, Settings UNET/LoRAs, and the save prefix.
 
 ## Cast
 

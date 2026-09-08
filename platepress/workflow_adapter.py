@@ -18,6 +18,13 @@ class AdapterError(Exception):
         self.key = key
 
 
+# Prompt key for vision encode nodes. CLIPTextEncode stays on "text".
+_PROMPT_ENCODERS = {
+    "TextEncodeQwenImageEditPlus": "prompt",
+    "TextEncodeKrea2": "prompt",
+}
+
+
 @dataclass
 class NodeMap:
     lora: str | None = None
@@ -62,9 +69,9 @@ def detect(workflow: Workflow) -> NodeMap:
         title = ((node.get("_meta") or {}).get("title") or "").lower()
         if ct == "Lora Loader Stack (rgthree)" or "lora" in ct.lower():
             m.lora = str(nid)
-        elif ct == "TextEncodeQwenImageEditPlus":
+        elif ct in _PROMPT_ENCODERS:
             m.positive = str(nid)
-            m.positive_key = "prompt"
+            m.positive_key = _PROMPT_ENCODERS[ct]
             m.is_ref_workflow = True
         elif ct == "CLIPTextEncode":
             if "prompt -" in title or "negative" in title:
@@ -146,7 +153,9 @@ def fill(
     wf = copy.deepcopy(workflow)
     nmap = detect(wf)
     if nmap.positive is None:
-        raise AdapterError("no positive encode node (CLIPTextEncode or TextEncodeQwenImageEditPlus)")
+        raise AdapterError(
+            "no positive encode node (CLIPTextEncode, TextEncodeQwenImageEditPlus, or TextEncodeKrea2)"
+        )
     if nmap.sampler is None:
         raise AdapterError("no KSampler node")
 

@@ -180,6 +180,10 @@ PKG = Path(__file__).resolve().parent
 DEFAULT_SETTINGS_PATH = PKG / "settings.json"
 DEMO_BOOK_ID = "default"
 DEMO_SEED = PKG / "demo" / "bos"
+DEFAULT_API_WORKFLOW = "Krea2T_V3_ref_clean03-API.json"
+_LEGACY_API_WORKFLOWS = {
+    "Krea2T_V3_ref_clean01-API.json",
+}
 _PATH_KEYS = ("workflow_text", "workflow_ref", "output_root", "models_dir", "loras_dir")
 _SYMLINK_PATH_KEYS = ("models_dir", "loras_dir")
 WEIGHT_SUFFIXES = {".safetensors", ".ckpt", ".pt", ".sft", ".gguf"}
@@ -214,13 +218,22 @@ def portable_path(value: str | Path, *, follow_symlinks: bool = True) -> str:
         return str(p)
 
 
+def migrate_default_workflow(s: dict[str, Any]) -> dict[str, Any]:
+    """If Settings still names the previous factory API graph, use the current one."""
+    for key in ("workflow_text", "workflow_ref"):
+        raw = str(s.get(key) or "").strip()
+        if raw and Path(raw).name in _LEGACY_API_WORKFLOWS:
+            s[key] = DEFAULT_API_WORKFLOW
+    return s
+
+
 def default_settings() -> dict[str, Any]:
     return {
         "host": "127.0.0.1",
         "port": 8188,
         "app_port": 7860,
-        "workflow_text": "Krea2T_V3_ref_clean01-API.json",
-        "workflow_ref": "Krea2T_V3_ref_clean01-API.json",
+        "workflow_text": DEFAULT_API_WORKFLOW,
+        "workflow_ref": DEFAULT_API_WORKFLOW,
         "unet_name": UNET,
         "models_dir": "",
         "loras_dir": "",
@@ -254,7 +267,7 @@ def load_settings(path: Path | None = None) -> dict[str, Any]:
             base.update(json.loads(path.read_text(encoding="utf-8")))
         except json.JSONDecodeError:
             pass
-    s = migrate_loras(migrate_layout(base))
+    s = migrate_loras(migrate_layout(migrate_default_workflow(base)))
     if not str(s.get("ref_cutout_text") or "").strip():
         s["ref_cutout_text"] = REF_CUTOUT
     for key in _PATH_KEYS:
@@ -271,7 +284,7 @@ def save_settings(data: dict[str, Any], path: Path | None = None) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     merged = default_settings()
     merged.update(data)
-    merged = migrate_loras(merged)
+    merged = migrate_loras(migrate_default_workflow(merged))
     for key in _PATH_KEYS:
         if merged.get(key):
             merged[key] = portable_path(
