@@ -616,6 +616,18 @@ def post_generate(body: dict[str, Any]) -> dict[str, Any]:
     skip_done = bool(body.get("skip_done", True))
     if slugs is not None:
         skip_done = False
+        resolved: list[str] = []
+        unresolved: list[str] = []
+        for sel in slugs:
+            hit = _resolve_slug(str(sel), parsed.plates)
+            if hit:
+                if hit not in resolved:
+                    resolved.append(hit)
+            else:
+                unresolved.append(str(sel))
+        slugs = resolved
+    else:
+        unresolved = []
     book_id = book.get("id") or "default"
     d = book_dir(s)
     renamed = normalize_plate_filenames(d, book_id)
@@ -628,12 +640,8 @@ def post_generate(body: dict[str, Any]) -> dict[str, Any]:
         for p in parsed.plates
         if slugs is None or any(same_slug(p.slug, sel) for sel in slugs)
     ]
-    if slugs:
-        missing = [
-            sel
-            for sel in slugs
-            if not any(same_slug(p.slug, sel) for p in parsed.plates)
-        ]
+    if slugs is not None:
+        missing = list(unresolved)
         if missing:
             extra = (
                 "not in the wall: "
@@ -826,11 +834,32 @@ def _run_key(slug: Any, seed: Any) -> str:
     return f"{slug}_{seed}"
 
 
-_SLUG_IN_NAME = re.compile(r"(?:^|_)((?:p|t)(\d+)_[A-Za-z0-9]+)", re.I)
+# p08_wrong_place keeps the extra _place. Stop before the next plate (p009_) or a trailing _2.
+_SLUG_IN_NAME = re.compile(
+    r"(?:^|_)((?:p|t)(\d+)_[A-Za-z0-9]+(?:_(?!p\d+_|t\d+_|\d+$)[A-Za-z0-9]+)*)",
+    re.I,
+)
+_CANON_SLUG = r"(?:p|t)\d{3,}_[A-Za-z0-9]+(?:_(?!p\d+_|t\d+_|\d+$)[A-Za-z0-9]+)*"
 
 
 def _slugs_in_name(name: str) -> list[str]:
-    return [m.group(1) for m in _SLUG_IN_NAME.finditer(name or "")]
+    stem = Path(name or "").stem
+    return [m.group(1) for m in _SLUG_IN_NAME.finditer(stem)]
+
+
+def _resolve_slug(wanted: str, plates: list) -> str | None:
+    """Match a wall slug, including truncated file names (p008_wrong → p08_wrong_place)."""
+    wanted = (wanted or "").strip()
+    if not wanted:
+        return None
+    for p in plates:
+        if same_slug(p.slug, wanted):
+            return p.slug
+    pad = pad_slug(wanted)
+    hits = [p.slug for p in plates if pad_slug(p.slug).startswith(pad + "_")]
+    if len(hits) == 1:
+        return hits[0]
+    return None
 
 
 def _plate_slug(name: str) -> str:
@@ -888,7 +917,7 @@ def _is_canonical_stem(stem: str, book_id: str, slug: str) -> bool:
     rest = stem[len(prefix) :]
     return bool(
         re.match(
-            r"v\d{2,}(?:_(?:p|t)\d{3,}_[A-Za-z0-9]+){1,2}(?:_\d{1,9})?$",
+            rf"v\d{{2,}}(?:_{_CANON_SLUG}){{1,2}}(?:_\d{{1,9}})?$",
             rest,
             re.I,
         )
@@ -967,12 +996,13 @@ def _patch_run_output_paths(book: dict[str, Any], renamed: list[tuple[Path, Path
 
 def _slug_sort_key(t: dict[str, Any]) -> tuple:
     name = t.get("name") or t.get("stem") or t.get("slug") or ""
+    stem = Path(name).stem
     run = t.get("run")
     if run is None:
-        run = _run_from_stem(Path(name).stem, t.get("book_id") or "") or 0
-    m = _SLUG_IN_NAME.search(name)
+        run = _run_from_stem(stem, t.get("book_id") or "") or 0
+    m = _SLUG_IN_NAME.search(stem)
     plate = int(m.group(2)) if m else 10_000
-    slug = m.group(1).lower() if m else name.lower()
+    slug = m.group(1).lower() if m else stem.lower()
     return (int(run), plate, slug, name.lower())
 
 
@@ -1154,12 +1184,13 @@ def post_letter(body: dict[str, Any]) -> dict[str, Any]:
         if img.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp"}:
             continue
         file_slugs = _slugs_in_name(img.name)
-        matched = [
-            p
-            for fs in file_slugs
-            for slug, p in by_slug.items()
-            if same_slug(slug, fs)
-        ]
+        matched = []
+        seen: set[str] = set()
+        for fs in file_slugs:
+            hit = _resolve_slug(fs, parsed.plates)
+            if hit and hit not in seen and hit in by_slug:
+                seen.add(hit)
+                matched.append(by_slug[hit])
         if not matched:
             skipped += 1
             continue

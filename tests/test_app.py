@@ -216,6 +216,37 @@ def test_plate_name_slug_not_seed():
     assert _seed_from_stem("p5_embargo_1346841254129315", "p5_embargo") == 1346841254129315
 
 
+def test_slug_keeps_extra_underscores():
+    from platepress.app import (
+        _file_stem,
+        _is_canonical_stem,
+        _plate_slug,
+        _resolve_slug,
+        _slugs_in_name,
+    )
+    class P:
+        def __init__(self, slug):
+            self.slug = slug
+
+    assert _slugs_in_name("p08_wrong_place") == ["p08_wrong_place"]
+    assert _file_stem("same_clouds", "p08_wrong_place", 1) == "same_clouds_v01_p008_wrong_place"
+    assert _plate_slug("same_clouds_v01_p008_wrong_place.png") == "p008_wrong_place"
+    assert _plate_slug("same_clouds_v01_p008_wrong_place_2.png") == "p008_wrong_place"
+    assert _slugs_in_name("same_clouds_v03_p008_wrong_place_p009_other_side.png") == [
+        "p008_wrong_place",
+        "p009_other_side",
+    ]
+    assert (
+        _file_stem("same_clouds", "p008_wrong_place_p009_other_side", 3)
+        == "same_clouds_v03_p008_wrong_place_p009_other_side"
+    )
+    assert _is_canonical_stem("same_clouds_v01_p008_wrong_place", "same_clouds", "p008_wrong_place")
+    assert _is_canonical_stem("same_clouds_v01_p008_wrong_place_2", "same_clouds", "p008_wrong_place")
+    plates = [P("p08_wrong_place"), P("p09_other_side")]
+    assert _resolve_slug("p008_wrong_place", plates) == "p08_wrong_place"
+    assert _resolve_slug("p008_wrong", plates) == "p08_wrong_place"
+
+
 def test_normalize_plate_filenames_uses_book_id(tmp_path):
     from platepress.app import normalize_plate_filenames
 

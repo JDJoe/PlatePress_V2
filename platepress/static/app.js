@@ -548,10 +548,16 @@ async function loadBook() {
   if (r.notice) showBanner(r.notice, "warn");
 }
 
+function slugsInName(name) {
+  const stem = String(name || "").replace(/\.[a-z0-9]+$/i, "");
+  const re = /(?:^|_)((?:p|t)\d+_[A-Za-z0-9]+(?:_(?!p\d+_|t\d+_|\d+$)[A-Za-z0-9]+)*)/gi;
+  return [...stem.matchAll(re)].map((m) => m[1]);
+}
+
 function slugFromName(name) {
-  const m = String(name || "").match(/(?:^|_)((?:p|t)\d+_[A-Za-z0-9]+)/i);
-  if (m) return m[1];
-  const stem = name.replace(/\.[a-z]+$/i, "");
+  const found = slugsInName(name);
+  if (found.length) return found[0];
+  const stem = String(name || "").replace(/\.[a-z]+$/i, "");
   return stem.replace(/_\d+$/, "");
 }
 
