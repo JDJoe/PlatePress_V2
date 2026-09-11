@@ -157,6 +157,7 @@ button.example span {
 details { margin-top: 1rem; color: var(--muted); }
 table { width: 100%; border-collapse: collapse; margin-top: 0.8rem; font-size: 13px; }
 th, td { border-bottom: 1px solid var(--line); padding: 0.4rem 0.3rem; text-align: left; vertical-align: top; }
+th input[type="checkbox"] { margin-right: 0.25rem; }
 .risky { color: var(--warn); }
 .card {
   border: 1px solid var(--line);

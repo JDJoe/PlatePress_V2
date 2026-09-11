@@ -42,7 +42,10 @@ class NodeMap:
     vae: str | None = None
     is_ref_workflow: bool = False
     positive_key: str = "text"
+    negative_key: str = "text"
     negative_has_text: bool = False
+    ref_latent: str | None = None
+    ref_vae_encode: str | None = None
 
 
 def _is_ui_graph(data: dict[str, Any]) -> bool:
@@ -50,7 +53,7 @@ def _is_ui_graph(data: dict[str, Any]) -> bool:
 
 
 def _api_sibling(path: Path) -> Path | None:
-    """Krea2T_V3_ref_clean03.json → Krea2T_V3_ref_clean03-API.json"""
+    """foo.json → foo-API.json"""
     stem = path.stem
     if stem.endswith("-API"):
         return None
@@ -79,6 +82,20 @@ def load_workflow(path: Path) -> Workflow:
     return data
 
 
+def _still_slot_order(workflow: Workflow, positive_id: str | None) -> list[str]:
+    """image1, image2, image3 on the positive encode — not LoadImage node-id order."""
+    if not positive_id:
+        return []
+    node = workflow.get(positive_id) or {}
+    inputs = node.get("inputs") or {}
+    out: list[str] = []
+    for i in range(1, 8):
+        v = inputs.get(f"image{i}")
+        if isinstance(v, list) and v:
+            out.append(str(v[0]))
+    return out
+
+
 def detect(workflow: Workflow) -> NodeMap:
     m = NodeMap()
     loaders: list[tuple[int, str]] = []
@@ -87,22 +104,36 @@ def detect(workflow: Workflow) -> NodeMap:
             continue
         ct = node.get("class_type") or ""
         title = ((node.get("_meta") or {}).get("title") or "").lower()
+        inputs = node.get("inputs") or {}
         if ct == "Lora Loader Stack (rgthree)" or "lora" in ct.lower():
             m.lora = str(nid)
         elif ct in _PROMPT_ENCODERS:
-            m.positive = str(nid)
-            m.positive_key = _PROMPT_ENCODERS[ct]
-            m.is_ref_workflow = True
+            key = _PROMPT_ENCODERS[ct]
+            has_still = isinstance(inputs.get("image1"), list)
+            if "positive" in title or (m.positive is None and has_still):
+                m.positive = str(nid)
+                m.positive_key = key
+                m.is_ref_workflow = True
+            elif m.positive is None:
+                m.positive = str(nid)
+                m.positive_key = key
+                m.is_ref_workflow = True
+            else:
+                m.negative = str(nid)
+                m.negative_key = key
+                m.negative_has_text = True
         elif ct == "CLIPTextEncode":
             if "prompt -" in title or "negative" in title:
                 m.negative = str(nid)
                 m.negative_has_text = True
+                m.negative_key = "text"
             elif m.positive is None:
                 m.positive = str(nid)
                 m.positive_key = "text"
             elif m.negative is None:
                 m.negative = str(nid)
                 m.negative_has_text = True
+                m.negative_key = "text"
         elif ct == "KSampler":
             m.sampler = str(nid)
         elif ct in ("EmptySD3LatentImage", "EmptyLatentImage"):
@@ -115,10 +146,13 @@ def detect(workflow: Workflow) -> NodeMap:
             loaders.append((int(nid) if str(nid).isdigit() else 0, str(nid)))
         elif ct == "FluxKontextMultiReferenceLatentMethod":
             m.ref_method = str(nid)
+        elif ct == "ReferenceLatent":
+            m.ref_latent = str(nid)
+        elif ct == "VAEEncode":
+            m.ref_vae_encode = str(nid)
         elif ct == "ConditioningKrea2Rebalance":
             m.rebalance = str(nid)
         elif ct == "ConditioningZeroOut":
-            # Negative is zeroed. Do not write Settings NEG onto this node.
             if m.negative is None:
                 m.negative = str(nid)
                 m.negative_has_text = False
@@ -129,8 +163,12 @@ def detect(workflow: Workflow) -> NodeMap:
         elif ct == "VAELoader":
             m.vae = str(nid)
     loaders.sort()
-    m.load_images = [nid for _, nid in loaders]
-    if m.load_images:
+    linked = _still_slot_order(workflow, m.positive)
+    if linked:
+        m.load_images = linked
+    else:
+        m.load_images = [nid for _, nid in loaders]
+    if m.load_images or m.ref_latent:
         m.is_ref_workflow = True
     return m
 
@@ -205,7 +243,10 @@ def fill(
 
     _set(wf, nmap.positive, nmap.positive_key, positive)
     if nmap.negative and nmap.negative_has_text:
-        _set(wf, nmap.negative, "text", negative)
+        neg_ct = (wf.get(nmap.negative) or {}).get("class_type") or ""
+        # Leave Qwen negative as the graph's diptych ban. CLIP neg gets Settings NEG.
+        if neg_ct == "CLIPTextEncode":
+            _set(wf, nmap.negative, nmap.negative_key or "text", negative)
     if nmap.unet and unet_name:
         _set(wf, nmap.unet, "unet_name", unet_name)
     if nmap.lora:
@@ -256,8 +297,14 @@ def fill(
         # Keep ConditioningKrea2Rebalance between encode and sampler.
         if nmap.ref_method:
             wf.pop(nmap.ref_method, None)
-            if nmap.rebalance is None:
+            if nmap.rebalance is None and nmap.ref_latent is None:
                 samp_in["positive"] = [nmap.positive, 0]
+        # No still: do not VAE-encode a leftover LoadImage. Sampler reads the text encode.
+        if n_img == 0 and nmap.ref_latent:
+            samp_in["positive"] = [nmap.positive, 0]
+            wf.pop(nmap.ref_latent, None)
+            if nmap.ref_vae_encode:
+                wf.pop(nmap.ref_vae_encode, None)
     for nid in nmap.previews:
         wf.pop(nid, None)
     return wf

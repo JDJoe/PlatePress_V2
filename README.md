@@ -12,7 +12,7 @@ Pages: **Settings** · **Cast** · **Book** · **Queue / Letter** · **Help**. O
 - ComfyUI at `http://127.0.0.1:8188` (configurable)
 - Krea2 **Turbo** (`KREA2/krea2_turbo_bf16.safetensors`)
 - Style LoRA in Settings (factory: `Krea2-aethernouveau-04`; not bundled)
-- API workflow JSON ships in the repo: `Krea2T_V3_ref_clean03-API.json` (text and stills; unused LoadImage nodes are dropped). Encode is `TextEncodeKrea2` plus `ConditioningKrea2Rebalance`. Negative is `ConditioningZeroOut` (Settings NEG is not written on this graph). To change UNET or LoRAs, use Settings — do not export a new graph for that. To add nodes or other graph settings, copy the default, **Save (API Format)** in Comfy, and pick it on the Book page.
+- API workflow JSON ships in the repo: `krea2_character_consistency_workflow-03-API.json` (text and stills; unused LoadImage nodes are dropped). Encode is `TextEncodeQwenImageEditPlus` plus `ReferenceLatent` when a still is on. The graph’s second Qwen encode is a diptych negative (Settings NEG is not written there). To change UNET or LoRAs, use Settings — do not export a new graph for that. To add nodes or other graph settings, copy the default, **Save (API Format)** in Comfy, and pick it on the Book page.
 
 ## Install
 
@@ -28,13 +28,13 @@ python -m platepress.app
 
 Open `http://127.0.0.1:7860`. Settings → **Test connection**.
 
-Paths in settings are relative to the clone (or `~/…`). First run writes `platepress/settings.json` locally (gitignored). Workflow `Krea2T_V3_ref_clean03-API.json` ships in the repo root (UI twin: `Krea2T_V3_ref_clean03.json`).
+Paths in settings are relative to the clone (or `~/…`). First run writes `platepress/settings.json` locally (gitignored). Workflow `krea2_character_consistency_workflow-03-API.json` ships in the repo root (UI twin: `krea2_character_consistency_workflow-03.json`).
 
 Books live as folders under `platepress/books/<id>/` (JSON, walls, stills, plates). That folder is gitignored so Maid2 and other live books stay on your machine. The **Bos Sidereal** demo is shipped in `platepress/demo/bos/` (story, captions, ANDROID and AUGUR stills). If `books/default` is missing, the app copies the demo there. The default book cannot be deleted from the UI. Generate plates locally; they are not in the repo.
 
 ## Settings (shared)
 
-Ink, closer, negatives, **UNET, LoRAs**, Comfy host, and **Send character stills** are **shared Settings**. They are not stored on the book. Cast, story, plates, and the book’s API workflow stay in that book’s folder. **World closer** is empty on Bos; the two-pane card fills the pane closer.
+Ink, closer, negatives, **UNET, LoRAs**, and Comfy host are **shared Settings**. They are not stored on the book. Cast, story, plates, per-slug Text/Image, and the book’s API workflow stay in that book’s folder. **World closer** is empty on Bos; the two-pane card fills the pane closer.
 
 **Style cards are the mode.** Click one; the boxes stay editable.
 
@@ -45,7 +45,7 @@ Ink, closer, negatives, **UNET, LoRAs**, Comfy host, and **Send character stills
 
 There is no separate Plate layout radio. The card *is* the mode.
 
-**Send character stills** is off unless you check it. On: if the slug names a Cast token and that card has a still, the file is `image1` (second named body → `image2`). Write `REFERENCE: use picture1…` on the Book wall; the app does not add that sentence. No still on the card → no image; unused LoadImage nodes are dropped. **Stills are cutouts** is off unless you check it; the sentence is editable and is not auto-inserted into the prompt.
+Stills and locks are per slug on the Book table (**Text** / **Image** columns). There is no global stills switch. **Cutout** is per character on Cast.
 
 Factory sampler (leave it unless you mean it): 8 steps, CFG 1, euler, beta.
 
@@ -55,8 +55,9 @@ Factory sampler (leave it unless you mean it): 8 steps, CFG 1, euler, beta.
 
 Each book has its own roster. Five books can all have **ANDROID**; they are five different people.
 
-- **Name** is the token in the story wall: `PILOT` or `{PILOT}`. Whole word only — `PILOT1` does not match `PILOT`, and the still will not attach.
-- **Lock** is face + suit + pack. Stills off: the lock is pasted into the prompt. Stills on: the lock is not pasted; the still is identity. Put pose and `picture1` on the Book wall. Do not put posing, standing, or helmet-hug in the lock.
+- Cast **order** is the slot: first card is `CHARACTER1` (also `PILOT1`), second is `CHARACTER2`. The name on the card is for you; `Anna` in the wall is writer text, not a lookup.
+- **Lock** is face + suit + pack. Book **Text** on: `CHARACTER1` is replaced by that lock. Book **Image** on and Text off: `CHARACTER1 is Anna` becomes `image1 is Anna`. Do not put posing, standing, or helmet-hug in the lock.
+- **Cutout** is a checkbox on the card. The cutout sentence lives on the Cast page.
 - A name like `PATRON` only does something if that card exists on this book.
 - 0–3 local stills per card. One body. Frontal portrait stills make the figure find the camera. Two-shots are flagged; faces fuse.
 - **Lock seed** on a Queue thumb to reuse that seed later.
@@ -65,12 +66,12 @@ Each book has its own roster. Five books can all have **ANDROID**; they are five
 
 ## Book
 
-Two walls. Slug on its own line (`p01_wreck`). Next line is the Cast token if a still should attach. Then the shot headings. The Book page has a copyable template.
+Two walls. Slug on its own line (`p01_wreck`). Then `CHARACTER1 is Anna` (alias is yours). Then the shot headings. The Book page has a copyable template. After Parse, **Text** and **Image** columns (with select-all in the header) choose lock, still, both, or neither.
 
 ```
 p01_slug
-PILOT
-REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and composition from the reference.
+CHARACTER1 is Anna
+REFERENCE: use image1 for costume only. Ignore background, pose, objects, and composition from the reference.
 SHOT: Medium side action shot.
 CAMERA: Where we stand, where we look. Both eyes hidden. Does not face the viewer.
 LOCATION: Place, ground, weather or interior.
@@ -84,11 +85,11 @@ Captions use the same slugs and keep newlines. Caption is the moral; prompt is t
 
 **Parse** before you generate. The table header checkbox selects or clears every slug. Click a prompt (or Copy) to copy the full assembled text Comfy will get — the hover hint cannot be selected. **Generate selected** uses the checked rows and always queues a **new version**, even if this book already has plates. It Parses first. **Generate missing** honors skip. **Generate all** does every plate. Default: 2 seeds per plate (`batch_size = 1` in the graph).
 
-The app assembles each plate as **ink, layout line, closer (if that box has text), Cast lock if stills are off, Book wall**. When stills are on, the lock is not pasted. Stills sentences are not auto-inserted. Hide the eyes. Working verb: **caught in the instant of [verb]**.
+The app assembles **ink, layout line, closer (if that box has text), Book wall**. It does not add KEEP lines. **Text** on replaces `CHARACTER1` with the first Cast lock. **Image** on (Text off) turns that into `image1 is Anna` and uploads the still. Both off: no lock, no still. Hide the eyes. Working verb: **caught in the instant of [verb]**.
 
 Two-pane: one checked row uses the next slug as the right pane. Write a full shot on each slug.
 
-**API workflow** is per book. Default is Settings `Krea2T_V3_ref_clean03-API.json`. To customize: open the default graph in Comfy, change nodes or parameters, **Save (API Format)**, put the JSON in this book’s `workflows/` folder (or shared `platepress/workflows/`), then pick it on the Book page. Extra nodes stay. The app still fills prompt, seed, Settings UNET/LoRAs, and the save prefix. If that graph has a CLIP negative node, Settings NEG is written there. The shipped default zeros the negative instead.
+**API workflow** is per book. Default is Settings `krea2_character_consistency_workflow-03-API.json`. To customize: open the default graph in Comfy, change nodes or parameters, **Save (API Format)**, put the JSON in this book’s `workflows/` folder (or shared `platepress/workflows/`), then pick it on the Book page. Extra nodes stay. The app still fills prompt, seed, Settings UNET/LoRAs, and the save prefix. If that graph has a CLIP negative node, Settings NEG is written there. The shipped default keeps its own diptych negative.
 
 **Copy instructions for your LLM** copies the shipped sheet plus this book’s locks (identity notes, not prompt prefix).
 

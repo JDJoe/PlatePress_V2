@@ -20,6 +20,8 @@ _INLINE_PANES = re.compile(
     r"left\s*pane\s*[:,]?\s*(.*?)\s*right\s*pane\s*[:,]?\s*(.*)",
     re.I | re.S,
 )
+# CHARACTER1 / PILOT1 → Cast slot 1. The name after "is" is writer text, not a lookup.
+_CHAR_TOKEN = re.compile(r"(?i)\b(?:CHARACTER|PILOT)(\d+)\b")
 
 
 def pad_slug(slug: str, width: int = SLUG_PAD) -> str:
@@ -32,6 +34,15 @@ def pad_slug(slug: str, width: int = SLUG_PAD) -> str:
 
 def same_slug(a: str, b: str) -> bool:
     return a == b or pad_slug(a) == pad_slug(b)
+
+
+def _slug_flag(d: dict[str, bool], slug: str, default: bool) -> bool:
+    if slug in d:
+        return bool(d[slug])
+    for key, val in d.items():
+        if same_slug(str(key), slug):
+            return bool(val)
+    return default
 
 
 def caption_for(slug: str, caps: dict[str, str]) -> str:
@@ -53,6 +64,7 @@ class Character:
     ref_active: str | None = None
     locked_seed: int | None = None
     notes: str = ""
+    ref_cutout: bool = False
 
 
 @dataclass
@@ -74,6 +86,8 @@ class Plate:
     pane_left_ids: list[str] = field(default_factory=list)
     pane_right_ids: list[str] = field(default_factory=list)
     named_ids: list[str] | None = None
+    use_text: bool = True
+    use_image: bool = False
 
 
 @dataclass
@@ -123,6 +137,37 @@ def _character_hits(text: str, character_names: list[str]) -> list[str]:
             if name not in found:
                 found.append(name)
     return found
+
+
+def parse_character_decls(body: str, character_names: list[str]) -> list[tuple[int, str]]:
+    """CHARACTER1 → first Cast card, CHARACTER2 → second. Writer alias is ignored."""
+    slots: dict[int, str] = {}
+    for m in _CHAR_TOKEN.finditer(body or ""):
+        slot = int(m.group(1))
+        idx = slot - 1
+        if slot >= 1 and idx < len(character_names):
+            slots[slot] = character_names[idx]
+    return sorted(slots.items())
+
+
+def expand_character_decls(body: str, by_name: dict[str, Character]) -> str:
+    """Replace CHARACTER1 with that slot's Cast lock. Leave 'is Anna and …' as written."""
+    names = list(by_name)
+    slots = dict(parse_character_decls(body, names))
+
+    def repl(m: re.Match[str]) -> str:
+        name = slots.get(int(m.group(1)))
+        if not name:
+            return ""
+        lock = (by_name[name].lock_text or "").strip().rstrip(".,; ")
+        return lock
+
+    return _CHAR_TOKEN.sub(repl, body or "")
+
+
+def character_tokens_to_images(body: str) -> str:
+    """CHARACTER1 is Anna → image1 is Anna. Text off, still on."""
+    return _CHAR_TOKEN.sub(lambda m: f"image{int(m.group(1))}", body or "")
 
 
 def _strip_character_tokens(text: str, character_names: set[str]) -> str:
@@ -301,10 +346,12 @@ def assemble(
     cutout_text: str = "",
     layout: str = "one",
     layout_text: str = "",
+    keep_names: list[str] | None = None,
 ) -> str:
-    """Ink + layout + closer + lock-if-no-still + Book wall.
+    """Ink + layout + closer + lock-if-no-still + KEEP lines + Book wall.
 
-    Stills off (n_pictures=0): paste Cast lock. Stills on: lock stays out; the still is identity.
+    Stills off (n_pictures=0): paste Cast lock unless the wall already inlined it.
+    Stills on: KEEP imageN lines; CHARACTERn lock is already in the wall if declared.
     """
     style = style.strip()
     scene = _spacecraft(scene.strip().rstrip(".,; "))
@@ -460,12 +507,18 @@ def parse_book(
     cutout_text: str = "",
     layout: str = "one",
     layout_text: str = "",
+    keep_names_for: dict[str, list[str]] | None = None,
+    use_text_for: dict[str, bool] | None = None,
+    use_image_for: dict[str, bool] | None = None,
 ) -> ParseResult:
     names = [c.name for c in characters]
     name_set = set(names)
     default_id = names[0] if names else None
     by_name = {c.name: c for c in characters}
     n_pictures_for = n_pictures_for or {}
+    keep_names_for = keep_names_for or {}
+    use_text_for = use_text_for or {}
+    use_image_for = use_image_for or {}
     warnings: list[str] = []
 
     prompt_items = parse_wall(prompts_raw, names)
@@ -479,16 +532,42 @@ def parse_book(
     plates: list[Plate] = []
     for i, (slug, raw_body) in enumerate(prompt_items, start=1):
         pw: list[str] = []
-        hits = _character_hits(slug + " " + raw_body, names)
         body = _strip_style_tail(raw_body, style, tail, pw, slug)
-        raw_panes = extract_inline_panes(body)
-        scene = _strip_character_tokens(body, name_set)
+        use_text = _slug_flag(use_text_for, slug, True)
+        use_image = _slug_flag(use_image_for, slug, False)
+        decls = parse_character_decls(body, names)
+        if decls:
+            hits = [n for _, n in decls] if (use_text or use_image) else []
+            named = list(hits)
+            if use_text:
+                body = expand_character_decls(body, by_name)
+            elif use_image:
+                body = character_tokens_to_images(body)
+            else:
+                body = _CHAR_TOKEN.sub("", body)
+            scene = body
+            locks_for_assemble: list[str] = []
+        elif use_text:
+            hits = _character_hits(slug + " " + body, names)
+            named = list(hits)
+            scene = _strip_character_tokens(body, name_set)
+            if not hits and default_id:
+                hits = [default_id]
+                pw.append(
+                    f"{slug}: no character token — used {default_id} lock, stills not attached"
+                )
+            locks_for_assemble = [by_name[n].lock_text for n in hits if n in by_name]
+        else:
+            hits = []
+            named = []
+            scene = body
+            locks_for_assemble = []
         scene = re.sub(r"\s+", " ", scene).strip()
         scene = _spacecraft(scene)
         pane_left = pane_right = ""
         pane_left_ids: list[str] = []
         pane_right_ids: list[str] = []
-        if raw_panes:
+        if raw_panes := extract_inline_panes(body):
             pre = re.split(r"left\s*pane", body, maxsplit=1, flags=re.I)[0]
             pane_left_ids = _character_hits(pre + " " + raw_panes[0], names)
             pane_right_ids = _character_hits(raw_panes[1], names)
@@ -498,29 +577,27 @@ def parse_book(
             pane_right = _spacecraft(
                 re.sub(r"\s+", " ", _strip_character_tokens(raw_panes[1], name_set)).strip()
             )
-        named = list(hits)
-        if not hits and default_id:
-            hits = [default_id]
-            pw.append(
-                f"{slug}: no character token — used {default_id} lock, stills not attached"
-            )
         risky = len(hits) >= 2
         if risky:
             pw.append(f"{slug}: two-shot — faces fuse")
         metaphor = detect_metaphor(scene)
         caption = caption_for(slug, caps)
-        locks = [by_name[n].lock_text for n in hits if n in by_name]
-        n_pic = n_pictures_for.get(slug, 0)
+        n_pic = n_pictures_for.get(slug, 0) if use_image else 0
+        keep = keep_names_for.get(slug) if use_image else None
+        plate_cutout = any(
+            bool(getattr(by_name.get(n), "ref_cutout", False)) for n in (named or [])
+        )
         assembled = assemble(
             style,
-            locks,
+            locks_for_assemble,
             scene,
             tail,
             n_pictures=n_pic,
-            cutout=cutout,
+            cutout=plate_cutout,
             cutout_text=cutout_text,
             layout="one",
             layout_text=layout_text or LAYOUT_ONE,
+            keep_names=keep or None,
         )
         plates.append(
             Plate(
@@ -539,6 +616,8 @@ def parse_book(
                 pane_left_ids=pane_left_ids,
                 pane_right_ids=pane_right_ids,
                 named_ids=named,
+                use_text=use_text,
+                use_image=use_image,
             )
         )
         warnings.extend(pw)

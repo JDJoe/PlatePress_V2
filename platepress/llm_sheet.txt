@@ -11,10 +11,10 @@ Rules:
 
 - Do not write style, sampler, LoRA, negatives, layout instructions, or aethernouveau. Do not write a world closer.
 - Each plate starts with a slug on its own line, two digits: p01_wreck
-- Next line: the Cast token exactly as the user gave it (whole word). PILOT1 is not PILOT. That token attaches the still.
+- Next line: CHARACTER1 is Anna (or PILOT1). Slot 1 is the first Cast card; Anna is your alias, not a lookup. CHARACTER2 is the second card.
 - Then these headings, each on its own line (or wrapped after the colon):
 
-REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and composition from the reference.
+REFERENCE: use image1 for costume only. Ignore background, pose, objects, and composition from the reference.
 SHOT: shot size (wide / medium / full body). Not a studio portrait.
 CAMERA: where we stand, where we look. Hide both eyes. Does not face the viewer.
 LOCATION: place, ground, weather or interior. Named objects. Depth.
@@ -48,8 +48,8 @@ Return only:
 PROMPTS
 
 p01_shortname
-TOKEN
-REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and composition from the reference.
+CHARACTER1 is Name
+REFERENCE: use image1 for costume only. Ignore background, pose, objects, and composition from the reference.
 SHOT:
 CAMERA:
 LOCATION:
@@ -59,8 +59,8 @@ HANDS:
 MOTION:
 
 p02_shortname
-TOKEN
-REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and composition from the reference.
+CHARACTER1 is Name
+REFERENCE: use image1 for costume only. Ignore background, pose, objects, and composition from the reference.
 SHOT:
 CAMERA:
 LOCATION:

@@ -22,20 +22,20 @@ Ink, layout line, closer, NEG, **UNET, LoRAs**, and stills-on/off are **shared S
 - Click a card to fill ink, layout line, and matching negatives. World closer stays empty on Bos; two-pane fills the pane closer. The boxes stay editable.
 - **Ink** and **Layout line** are prepended to every plate.
 - **World closer** is empty on Bos. Two-pane fills “each pane is its own scene…”. Prepended only if that box has text.
-- **NEG** is the negative prompt. It is written only if the API graph has a CLIP negative node. The shipped default uses `ConditioningZeroOut` instead, so this box is stored but not sent.
-- **Send character stills** is off unless you check it. Off: Cast lock is pasted into the prompt (text locks only). On: if the slug names a Cast token and that card has a still, the file is `image1` (second named body → `image2`) and the lock is not pasted. No still on the card → no image, lock is pasted. Write `REFERENCE: use picture1…` in the Book wall yourself; the app does not add that sentence.
-- **Stills are cutouts** is off unless you check it. The cutout sentence is editable. It is not stuffed into the prompt unless you put it on the wall.
+- **NEG** is the negative prompt. It is written only if the API graph has a CLIP negative node. The shipped default keeps its own diptych negative.
+- Stills and locks are **Text** / **Image** on the Book table, not Settings. **Cutout** is per character on Cast.
 - **Model and LoRAs** — **Load lists from Comfy** and pick the exact UNETLoader name. Combo name is the listed folder plus the listed file (`KREA2/krea2_turbo_bf16.safetensors`). Softlinks keep those names. Must be a Krea 2 UNET. Shared Settings — not saved on the book.
 - Do not touch sampler unless you mean it. Factory: 8 steps, CFG 1, euler, beta.
 
-API graph: `Krea2T_V3_ref_clean03-API.json` (text and stills; `TextEncodeKrea2` + rebalance; unused LoadImage nodes are dropped). **Per book:** open that default in Comfy, change nodes or parameters, **Save (API Format)**, drop the JSON in this book’s `workflows/` folder (or shared `platepress/workflows/`), pick it on the Book page. Extra nodes stay. The app still fills prompt, seed, Settings UNET/LoRAs, and the save prefix.
+API graph: `krea2_character_consistency_workflow-03-API.json` (text and stills; Qwen encode + ReferenceLatent when a still is on; unused LoadImage nodes are dropped). **Per book:** open that default in Comfy, change nodes or parameters, **Save (API Format)**, drop the JSON in this book’s `workflows/` folder (or shared `platepress/workflows/`), pick it on the Book page. Extra nodes stay. The app still fills prompt, seed, Settings UNET/LoRAs, and the save prefix.
 
 ## Cast
 
 - Cast is per book. Five books can all have ANDROID; they are not the same person.
 - Header plus Cast, Book, Queue, and Settings headings show which book you are editing.
-- **Name** is the token on the wall: `PILOT` or `{PILOT}`. It must be a whole word. `PILOT1` does not match `PILOT`, and the still will not attach.
-- **Lock** is face + suit + pack. **Stills off:** the lock is pasted into the prompt (text locks only). **Stills on:** the lock is not pasted; the still is identity. Put pose and `picture1` on the Book wall. Do not put posing, standing, or helmet-hug in the lock.
+- First Cast card is `CHARACTER1` / `PILOT1`, second is `CHARACTER2`. `Anna` after `is` is writer text, not a Cast lookup.
+- **Lock** is face + suit + pack. Book **Text** on: `CHARACTER1` becomes the lock. **Image** on, Text off: `CHARACTER1 is Anna` becomes `image1 is Anna`. Do not put posing, standing, or helmet-hug in the lock.
+- **Cutout** is a checkbox on the card. Cutout sentence is on the Cast page.
 - Never put posing, standing, cute, helmet-hug, or looking over the shoulder in the lock. Helmet and over-shoulder live on one slug.
 - A name like `PATRON` only works if that card exists on this book.
 - 0–3 local stills per card. One body. Replace still on that card. Frontal portrait stills make the figure find the camera. Prefer a full-body still if you say “costume only.”
@@ -45,12 +45,12 @@ API graph: `Krea2T_V3_ref_clean03-API.json` (text and stills; `TextEncodeKrea2` 
 
 ## Book
 
-Story wall. Slug, then the Cast token if a still should attach, then the shot headings. Copy the template on the Book page.
+Story wall. Slug, then `CHARACTER1 is Anna`, then the shot headings. Copy the template on the Book page. **Text** and **Image** columns (header select-all) choose lock, still, both, or neither.
 
 ```
 p01_slug
-PILOT
-REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and composition from the reference.
+CHARACTER1 is Anna
+REFERENCE: use image1 for costume only. Ignore background, pose, objects, and composition from the reference.
 SHOT: Medium side action shot.
 CAMERA: Where we stand, where we look. Full body / over the shoulder / profile. Both eyes hidden. Does not face the viewer.
 LOCATION: Place, ground, weather or interior. Named objects.
@@ -61,16 +61,16 @@ MOTION: Body, boots, pack, debris, the beat.
 ```
 
 - Slug on its own line (`p01_wreck`, `t1_one`). Two digits so p010 sorts after p001.
-- Token on the next line must match the Cast **Name** exactly if you want that still.
+- `CHARACTER1 is Anna` — slot 1 is the first Cast card; Anna is your alias.
 - Do not paste ink, closer, sampler, or `aethernouveau` here. The app prepends ink and the layout line (and closer if that box is not empty).
 - Hide the eyes. `not looking at the viewer` is often ignored. Name shot size and where we stand.
 - Working verb: **caught in the instant of [verb]**.
 - Captions: same slugs, keep newlines, in the **Captions** box. Caption is the moral. Prompt is the camera.
 - The default book is the demo. It cannot be deleted from the UI.
 - **Parse** before generate. Check the two-shot column. Click a prompt (or Copy) to copy the full assembled text Comfy will get.
-- The table header checkbox selects or clears every slug.
+- Header checkboxes: generate-select, Text column, Image column.
 - **Generate selected** uses the checked rows and always queues a new version. It Parses first. Skip only applies to Generate missing.
-- Assembler order: **ink, layout line, closer (if any), Cast lock if stills off, Book wall**. Stills sentences are not auto-inserted.
+- Assembler: **ink, layout line, closer (if any), Book wall**. No KEEP line is added.
 - Two-pane comic: one checked row uses the next slug as the right pane. Write a full shot on each slug.
 - Default: 2 random seeds per plate.
 - **Copy instructions for your LLM** copies the shipped sheet plus this book’s locks (as identity notes, not as prompt prefix).
@@ -79,10 +79,10 @@ Metaphor examples: spiderweb of black cells; wet silk into teal glass; stained g
 
 ## Refs
 
-- Off unless **Send character stills** is checked.
-- One still per Cast token named on that plate. `PILOT` attaches; `PILOT1` does not.
+- Per slug **Image** column, not a Settings switch. `CHARACTER1` → `image1`, `CHARACTER2` → `image2`.
+- Text off + Image on: the wall reads `image1 is Anna`. Write KEEP/REFERENCE yourself if you want it.
 - Frontal “look at me” stills clone that pose. Use a full-body costume still.
-- Cutouts: optional checkbox plus editable sentence. Prefer writing REFERENCE on the wall.
+- Cutout is per Cast card. Prefer writing REFERENCE on the wall.
 
 ## Queue / Letter
 

@@ -51,7 +51,7 @@ document.querySelectorAll("nav button").forEach((b) => {
 const SET_KEYS = [
   "host", "port", "workflow_text", "workflow_ref",
   "models_dir", "loras_dir", "unet_name",
-  "style", "layout", "layout_text", "tail", "neg", "ref_cutout_text",
+  "style", "layout", "layout_text", "tail", "neg",
   "images_per_plate", "output_root",
   "steps", "cfg", "sampler_name", "scheduler",
 ];
@@ -173,8 +173,7 @@ function updateAssemblePreview() {
       ? "Left pane: (first slug). Right pane: (next slug)."
       : "",
     ($("tail") && $("tail").value.trim()) || "",
-    ($("send_refs") && $("send_refs").checked) ? "" : "(Cast lock)",
-    "(Book wall)",
+    "(Book wall — Text / Image columns on Parse)",
   ].filter(Boolean);
   box.textContent = bits.join(" ");
 }
@@ -225,10 +224,6 @@ function fillSettings(s) {
     const el = $(k);
     if (el) el.value = s[k] ?? "";
   });
-  const sr = $("send_refs");
-  if (sr) sr.checked = !!s.send_refs;
-  const rc = $("ref_cutout");
-  if (rc) rc.checked = !!s.ref_cutout;
   if ($("layout")) $("layout").value = s.layout || "one";
   renderLoras(s.loras);
   fillDatalist("unet-list", weightLists.models, s.unet_name);
@@ -246,10 +241,6 @@ function readSettings() {
     const v = el.value;
     body[k] = el.type === "number" ? Number(v) : v;
   });
-  const sr = $("send_refs");
-  if (sr) body.send_refs = sr.checked;
-  const rc = $("ref_cutout");
-  if (rc) body.ref_cutout = rc.checked;
   body.loras = readLoras();
   return body;
 }
@@ -296,9 +287,10 @@ function renderCast() {
       <input type="text" data-k="name" data-i="${i}" value="${c.name || ""}" />
       <label>Lock</label>
       <textarea data-k="lock_text" data-i="${i}">${c.lock_text || ""}</textarea>
+      <label class="tiny"><input type="checkbox" data-k="ref_cutout" data-i="${i}" ${c.ref_cutout ? "checked" : ""} /> Cutout (background already removed)</label>
       <p class="tiny">Locked seed: ${c.locked_seed ?? "none"}</p>
       <button class="act ghost" data-clear="${c.name}">Clear seed</button>
-      <label>Still — one body. Optional: cutout with background removed (see Settings).</label>
+      <label>Still — one body.</label>
       <div class="ref-row">${slots || '<p class="tiny">no still</p>'}</div>
       <label class="tiny">Replace still</label>
       <input type="file" accept="image/*" data-upload="${c.name}" data-cid="${c.id}" />
@@ -318,7 +310,7 @@ function renderCast() {
           return;
         }
       }
-      book.characters[i][el.dataset.k] = el.value;
+      book.characters[i][el.dataset.k] = el.type === "checkbox" ? el.checked : el.value;
       saveBookSilent().catch((e) => {
         showBanner(e.message, "err");
         loadBook();
@@ -411,6 +403,28 @@ async function copyAssembled(text, slug) {
   }
 }
 
+function slugOpt(slug) {
+  const o = (book.slug_opts && book.slug_opts[slug]) || {};
+  return {
+    use_text: o.use_text !== false,
+    use_image: !!o.use_image,
+  };
+}
+
+function collectSlugOpts() {
+  const opts = Object.assign({}, book.slug_opts || {});
+  document.querySelectorAll("#preview tr").forEach((tr) => {
+    const slugEl = tr.querySelector("input[data-slug]");
+    if (!slugEl) return;
+    const slug = slugEl.dataset.slug;
+    opts[slug] = {
+      use_text: !!(tr.querySelector("input[data-use-text]") || {}).checked,
+      use_image: !!(tr.querySelector("input[data-use-image]") || {}).checked,
+    };
+  });
+  return opts;
+}
+
 function renderPreview(plates, warnings, checkedSlugs) {
   const tb = $("preview");
   tb.innerHTML = "";
@@ -421,6 +435,12 @@ function renderPreview(plates, warnings, checkedSlugs) {
       .filter(Boolean).join("; ");
     const on = !checkedSlugs || checkedSlugs.some((s) => s === p.slug);
     const assembled = p.assembled || "";
+    const opt = {
+      use_text: p.use_text !== false && slugOpt(p.slug).use_text,
+      use_image: !!(p.use_image || slugOpt(p.slug).use_image),
+    };
+    if (p.use_text === false) opt.use_text = false;
+    if (p.use_image === true) opt.use_image = true;
 
     const tdCheck = document.createElement("td");
     const cb = document.createElement("input");
@@ -428,6 +448,20 @@ function renderPreview(plates, warnings, checkedSlugs) {
     cb.dataset.slug = p.slug;
     if (on) cb.checked = true;
     tdCheck.appendChild(cb);
+
+    const tdText = document.createElement("td");
+    const cbText = document.createElement("input");
+    cbText.type = "checkbox";
+    cbText.dataset.useText = "1";
+    cbText.checked = opt.use_text;
+    tdText.appendChild(cbText);
+
+    const tdImg = document.createElement("td");
+    const cbImg = document.createElement("input");
+    cbImg.type = "checkbox";
+    cbImg.dataset.useImage = "1";
+    cbImg.checked = opt.use_image;
+    tdImg.appendChild(cbImg);
 
     const tdSlug = document.createElement("td");
     const code = document.createElement("code");
@@ -463,11 +497,19 @@ function renderPreview(plates, warnings, checkedSlugs) {
       tdPrompt.addEventListener("click", () => copyAssembled(assembled, p.slug));
     }
 
-    tr.append(tdCheck, tdSlug, tdCast, tdMeta, tdWarn, tdPrompt);
+    tr.append(tdCheck, tdText, tdImg, tdSlug, tdCast, tdMeta, tdWarn, tdPrompt);
     tb.appendChild(tr);
   });
   slugBoxes().forEach((el) => el.addEventListener("change", syncSlugAll));
+  document.querySelectorAll("#preview input[data-use-text]").forEach((el) => {
+    el.addEventListener("change", onSlugOptChange);
+  });
+  document.querySelectorAll("#preview input[data-use-image]").forEach((el) => {
+    el.addEventListener("change", onSlugOptChange);
+  });
   syncSlugAll();
+  syncColAll("text");
+  syncColAll("image");
   if (warnings && warnings.length) showBanner(warnings.join(" · "), "warn");
 }
 
@@ -493,10 +535,39 @@ function setAllSlugs(on) {
   syncSlugAll();
 }
 
+function colBoxes(kind) {
+  const key = kind === "image" ? "data-use-image" : "data-use-text";
+  return [...document.querySelectorAll(`#preview input[${key}]`)];
+}
+
+function syncColAll(kind) {
+  const head = $(kind === "image" ? "image-all" : "text-all");
+  if (!head) return;
+  const boxes = colBoxes(kind);
+  const n = boxes.filter((el) => el.checked).length;
+  head.indeterminate = n > 0 && n < boxes.length;
+  head.checked = boxes.length > 0 && n === boxes.length;
+}
+
+function setAllCol(kind, on) {
+  colBoxes(kind).forEach((el) => { el.checked = on; });
+  syncColAll(kind);
+  onSlugOptChange();
+}
+
+function onSlugOptChange() {
+  book.slug_opts = collectSlugOpts();
+  syncColAll("text");
+  syncColAll("image");
+  saveBookSilent().catch((e) => showBanner(e.message, "err"));
+}
+
 async function saveBookSilent() {
   book.title = $("title").value;
   book.prompts_raw = $("prompts_raw").value;
   book.captions_raw = $("captions_raw").value;
+  book.slug_opts = collectSlugOpts();
+  if ($("ref_cutout_text")) book.ref_cutout_text = $("ref_cutout_text").value;
   const wf = $("book-workflow");
   if (wf) book.workflow = wf.value || null;
   const r = await j("/api/book", {
@@ -542,6 +613,7 @@ async function loadBook() {
   $("title").value = book.title || "";
   $("prompts_raw").value = book.prompts_raw || "";
   $("captions_raw").value = book.captions_raw || "";
+  if ($("ref_cutout_text")) $("ref_cutout_text").value = book.ref_cutout_text || settings.ref_cutout_text || "";
   await fillWorkflowSelect();
   renderCast();
   renderPreview(book.plates || [], []);
@@ -782,12 +854,16 @@ async function generate(mode) {
     await saveBookSilent();
     const body = {
       skip_done: $("skip_done").checked,
-      send_refs: !!($("send_refs") && $("send_refs").checked),
+      slug_opts: collectSlugOpts(),
     };
     if (mode === "all") body.skip_done = false;
     if (mode === "sel") {
       const picked = selectedSlugs();
-      const parsed = await j("/api/parse", { method: "POST" });
+      const parsed = await j("/api/parse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug_opts: collectSlugOpts() }),
+      });
       renderPreview(parsed.plates || [], parsed.warnings || [], picked);
       book.plates = parsed.plates;
       body.slugs = selectedSlugs();
@@ -825,33 +901,17 @@ async function generate(mode) {
   }
 }
 
-["style", "layout_text", "tail", "ref_cutout_text"].forEach((id) => {
+["style", "layout_text", "tail"].forEach((id) => {
   const el = $(id);
   if (el) el.addEventListener("input", () => {
     markActiveExample();
     updateAssemblePreview();
   });
 });
-if ($("ref_cutout")) {
-  $("ref_cutout").addEventListener("change", updateAssemblePreview);
-}
-if ($("send_refs")) {
-  $("send_refs").addEventListener("change", async () => {
-    try {
-      settings = await j("/api/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(readSettings()),
-      });
-      fillSettings(settings);
-      updateAssemblePreview();
-      showBanner(
-        settings.send_refs ? "stills ON — Qwen will copy pose and backdrop" : "stills off — text locks only",
-        settings.send_refs ? "warn" : "ok"
-      );
-    } catch (e) {
-      showBanner(e.message, "err");
-    }
+if ($("ref_cutout_text")) {
+  $("ref_cutout_text").addEventListener("change", () => {
+    book.ref_cutout_text = $("ref_cutout_text").value;
+    saveBookSilent().catch((e) => showBanner(e.message, "err"));
   });
 }
 if ($("unet_name")) {
@@ -961,7 +1021,12 @@ $("title").addEventListener("input", () => {
 });
 $("parse").onclick = async () => {
   await saveBookSilent();
-  const r = await j("/api/parse", { method: "POST" });
+  const r = await j("/api/parse", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ slug_opts: collectSlugOpts() }),
+  });
+  book.plates = r.plates;
   renderPreview(r.plates, r.warnings);
   if (r.notice) showBanner(r.notice, "warn");
   else if (!r.warnings.length) showBanner(`${r.plates.length} plates`, "ok");
@@ -985,6 +1050,8 @@ $("gen-missing").onclick = () => generate("missing");
 $("gen-all").onclick = () => generate("all");
 $("gen-sel").onclick = () => generate("sel");
 $("slug-all").addEventListener("change", () => setAllSlugs($("slug-all").checked));
+$("text-all").addEventListener("change", () => setAllCol("text", $("text-all").checked));
+$("image-all").addEventListener("change", () => setAllCol("image", $("image-all").checked));
 $("letter-all").onclick = async () => {
   showBanner("lettering all…", "ok");
   try {

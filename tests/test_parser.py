@@ -421,3 +421,110 @@ right pane: PATRON He looks down from the cracked oil portrait, gold leaf on the
     left_lock = asm.find(ANDROID, chair)
     assert chair < portrait
     assert left_lock == -1 or left_lock < portrait or ANDROID not in asm[portrait:]
+
+
+def test_character1_is_cast_slot_one_alias_is_writer_text():
+    wall = """
+p01_heist
+CHARACTER1 is Anna
+SHOT: Wide action shot inside a cargo bay.
+ACTION: Anna is forcing open the alien container.
+"""
+    r = parse_book(wall, "", CAST)
+    p = r.plates[0]
+    assert p.character_ids == ["ANDROID"]
+    assert p.named_ids == ["ANDROID"]
+    assert ANDROID in p.scene_text
+    assert "CHARACTER1" not in p.scene_text
+    assert p.scene_text.startswith(ANDROID)
+    assert "is Anna" in p.scene_text
+    assert "Anna is forcing" in p.scene_text
+    assert "CHARACTER1" not in p.assembled
+    assert "KEEP the woman same" not in p.assembled
+
+
+def test_character1_is_replaced_lock_rest_kept():
+    wall = """
+p01_heist
+CHARACTER1 is Anna and she is now wearing a blue space suit.
+"""
+    r = parse_book(wall, "", CAST)
+    scene = r.plates[0].scene_text
+    assert scene == f"{ANDROID} is Anna and she is now wearing a blue space suit."
+    assert "CHARACTER1" not in scene
+
+
+def test_pilot1_alias_and_keep_lines_when_stills_on():
+    wall = """
+p01_heist
+PILOT1 = Anna. Use picture1 for Anna's costume only.
+ACTION: Anna is forcing open the container.
+"""
+    r = parse_book(
+        wall, "", CAST,
+        keep_names_for={"p01_heist": ["ANDROID"]},
+        n_pictures_for={"p01_heist": 1},
+        use_image_for={"p01_heist": True},
+    )
+    p = r.plates[0]
+    assert p.named_ids == ["ANDROID"]
+    assert ANDROID in p.assembled
+    assert "KEEP the woman same" not in p.assembled
+    assert "Anna is forcing" in p.assembled
+
+
+def test_character2_two_slots():
+    wall = """
+p01_heist
+CHARACTER1 is Anna
+CHARACTER2 is Betty
+ACTION: Anna cuts. Betty watches the door.
+"""
+    r = parse_book(wall, "", CAST)
+    p = r.plates[0]
+    assert p.character_ids == ["ANDROID", "AUGUR"]
+    assert ANDROID in p.scene_text
+    assert AUGUR in p.scene_text
+    assert "Anna cuts" in p.scene_text
+    assert "Betty watches" in p.scene_text
+    assert "CHARACTER1" not in p.assembled
+    assert "CHARACTER2" not in p.assembled
+    assert "PILOT1" not in p.assembled
+
+
+def test_use_text_off_strips_character_token_no_lock():
+    wall = """
+p01_heist
+CHARACTER1 is Anna and she is now wearing a blue space suit.
+ACTION: empty cargo bay, no people.
+"""
+    r = parse_book(wall, "", CAST, use_text_for={"p01_heist": False}, use_image_for={"p01_heist": False})
+    p = r.plates[0]
+    assert "CHARACTER1" not in p.assembled
+    assert ANDROID not in p.scene_text
+    assert "blue space suit" in p.scene_text
+    assert p.use_text is False
+    assert p.use_image is False
+    assert p.character_ids == []
+
+
+def test_use_image_without_text_keeps_keep_line():
+    wall = """
+p01_heist
+CHARACTER1 is Anna
+ACTION: Anna opens the crate.
+"""
+    r = parse_book(
+        wall, "", CAST,
+        use_text_for={"p01_heist": False},
+        use_image_for={"p01_heist": True},
+        keep_names_for={"p01_heist": ["ANDROID"]},
+        n_pictures_for={"p01_heist": 1},
+    )
+    p = r.plates[0]
+    assert ANDROID not in p.scene_text
+    assert "CHARACTER1" not in p.scene_text
+    assert "image1 is Anna" in p.scene_text
+    assert "KEEP the woman same" not in p.assembled
+    assert p.use_image is True
+    assert p.named_ids == ["ANDROID"]

@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -172,33 +172,42 @@ def _chars(book: dict[str, Any]) -> list[Character]:
                 ref_active=c.get("ref_active"),
                 locked_seed=c.get("locked_seed"),
                 notes=c.get("notes") or "",
+                ref_cutout=bool(c.get("ref_cutout")),
             )
         )
     return out
 
 
-def _refs_for(plate, chars: list[Character], names: list[str] | None = None) -> list[Path]:
-    """Exactly one still per character named on the plate. Default lock does not send a still."""
+def _still_path(c: Character) -> Path | None:
+    pick = c.ref_active
+    if pick and Path(pick).exists():
+        return Path(pick)
+    existing = [Path(p) for p in c.ref_images if p and Path(p).exists()]
+    return existing[-1] if existing else None
+
+
+def _ref_pairs(plate, chars: list[Character], names: list[str] | None = None) -> list[tuple[str, Path]]:
+    """Stills in CHARACTERn / named order. Default lock does not send a still."""
     by = {c.name: c for c in chars}
-    paths: list[Path] = []
     if names is not None:
         ids = names
     elif getattr(plate, "named_ids", None) is not None:
         ids = plate.named_ids
     else:
         ids = plate.character_ids
-    for name in ids:
+    pairs: list[tuple[str, Path]] = []
+    for name in ids or []:
         c = by.get(name)
         if not c:
             continue
-        pick = c.ref_active
-        if pick and Path(pick).exists():
-            paths.append(Path(pick))
-            continue
-        existing = [Path(p) for p in c.ref_images if p and Path(p).exists()]
-        if existing:
-            paths.append(existing[-1])
-    return paths[:3]
+        path = _still_path(c)
+        if path is not None:
+            pairs.append((name, path))
+    return pairs[:3]
+
+
+def _refs_for(plate, chars: list[Character], names: list[str] | None = None) -> list[Path]:
+    return [path for _, path in _ref_pairs(plate, chars, names)]
 
 
 def _done_slugs(d: Path) -> set[str]:
@@ -219,10 +228,30 @@ def _done_slugs(d: Path) -> set[str]:
     return found
 
 
-def _parse(book: dict[str, Any], s: dict[str, Any], picture_counts: dict[str, int] | None = None):
+def _slug_opt_maps(book: dict[str, Any], extra: dict[str, Any] | None = None) -> tuple[dict[str, bool], dict[str, bool]]:
+    raw = dict(book.get("slug_opts") or {})
+    if extra:
+        raw.update(extra)
+    text: dict[str, bool] = {}
+    image: dict[str, bool] = {}
+    for key, val in raw.items():
+        if not isinstance(val, dict):
+            continue
+        text[str(key)] = bool(val.get("use_text", True))
+        image[str(key)] = bool(val.get("use_image", False))
+    return text, image
+
+
+def _parse(
+    book: dict[str, Any],
+    s: dict[str, Any],
+    picture_counts: dict[str, int] | None = None,
+    keep_names_for: dict[str, list[str]] | None = None,
+):
     chars = _chars(book)
     style = book.get("style") or s["style"]
     tail = book.get("tail") or s.get("tail") or ""
+    use_text_for, use_image_for = _slug_opt_maps(book)
     return parse_book(
         book.get("prompts_raw") or "",
         book.get("captions_raw") or "",
@@ -230,10 +259,13 @@ def _parse(book: dict[str, Any], s: dict[str, Any], picture_counts: dict[str, in
         style=style,
         tail=tail,
         n_pictures_for=picture_counts,
-        cutout=bool(s.get("ref_cutout")),
-        cutout_text=str(s.get("ref_cutout_text") or ""),
+        cutout=False,
+        cutout_text=str(book.get("ref_cutout_text") or s.get("ref_cutout_text") or ""),
         layout=s.get("layout") or "one",
         layout_text=s.get("layout_text") or "",
+        keep_names_for=keep_names_for,
+        use_text_for=use_text_for,
+        use_image_for=use_image_for,
     )
 
 
@@ -514,6 +546,8 @@ def post_book(body: dict[str, Any]) -> dict[str, Any]:
         "tail",
         "plates",
         "workflow",
+        "slug_opts",
+        "ref_cutout_text",
     ):
         if k not in body:
             continue
@@ -532,18 +566,25 @@ def post_book(body: dict[str, Any]) -> dict[str, Any]:
 
 
 @app.post("/api/parse")
-def post_parse() -> dict[str, Any]:
+def post_parse(body: dict[str, Any] | None = Body(default=None)) -> dict[str, Any]:
     s = _settings()
     book = load_book(s)
+    body = body or {}
+    if isinstance(body.get("slug_opts"), dict):
+        book["slug_opts"] = body["slug_opts"]
     chars = _chars(book)
     picture_counts: dict[str, int] = {}
     result = _parse(book, s)
     ref_path = Path(s.get("workflow_ref") or "")
-    use_ref = bool(s.get("send_refs")) and ref_path.exists()
+    keep_for: dict[str, list[str]] = {}
+    _, use_image_for = _slug_opt_maps(book)
     for p in result.plates:
-        n = len(_refs_for(p, chars)) if use_ref else 0
-        picture_counts[p.slug] = n
-    result = _parse(book, s, picture_counts)
+        want_img = bool(getattr(p, "use_image", False)) or bool(use_image_for.get(p.slug))
+        pairs = _ref_pairs(p, chars) if (want_img and ref_path.exists()) else []
+        picture_counts[p.slug] = len(pairs)
+        if pairs:
+            keep_for[p.slug] = [name for name, _ in pairs]
+    result = _parse(book, s, picture_counts, keep_for)
     book["plates"] = [
         {
             "slug": p.slug,
@@ -558,9 +599,19 @@ def post_parse() -> dict[str, Any]:
             "warnings": p.warnings,
             "pane": p.pane,
             "pair_with": p.pair_with,
+            "use_text": bool(getattr(p, "use_text", True)),
+            "use_image": bool(getattr(p, "use_image", False)),
         }
         for p in result.plates
     ]
+    opts = dict(book.get("slug_opts") or {})
+    for p in result.plates:
+        prev = opts.get(p.slug) if isinstance(opts.get(p.slug), dict) else {}
+        opts[p.slug] = {
+            "use_text": bool(prev.get("use_text", getattr(p, "use_text", True))),
+            "use_image": bool(prev.get("use_image", getattr(p, "use_image", False))),
+        }
+    book["slug_opts"] = opts
     save_book(s, book)
     notice = _ref_notice(s, chars)
     return {
@@ -604,10 +655,10 @@ def _split_units(want: list, all_plates: list) -> tuple[list[tuple], int, str]:
 @app.post("/api/generate")
 def post_generate(body: dict[str, Any]) -> dict[str, Any]:
     s = _settings()
-    if "send_refs" in body:
-        s["send_refs"] = bool(body["send_refs"])
-        save_settings(s)
     book = load_book(s)
+    if isinstance(body.get("slug_opts"), dict):
+        book["slug_opts"] = body["slug_opts"]
+        save_book(s, book)
     chars = _chars(book)
     parsed = _parse(book, s)
     if not parsed.plates:
@@ -668,10 +719,7 @@ def post_generate(body: dict[str, Any]) -> dict[str, Any]:
     skipped = 0
     by = {c.name: c for c in chars}
     ref_note = _ref_notice(s, chars)
-    send_refs = bool(s.get("send_refs"))
-    if not send_refs:
-        extra = "Stills not sent. Text locks only."
-        ref_note = f"{ref_note} {extra}".strip() if ref_note else extra
+    _, use_image_for = _slug_opt_maps(book)
     notice = " ".join(x for x in (notice, ref_note) if x).strip()
     batch_id = new_id("b")
     batch_at = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -710,12 +758,14 @@ def post_generate(body: dict[str, Any]) -> dict[str, Any]:
                 locks_l = [by[n].lock_text for n in lock_ids_l if n in by]
                 locks_r = [by[n].lock_text for n in lock_ids_r if n in by]
                 left_scene, right_scene = ls, rs
-                refs_l = _refs_for(left, chars, ids_l) if (send_refs and ref_wf.exists()) else []
-                refs_r = _refs_for(left, chars, ids_r) if (send_refs and ref_wf.exists() and ids_r) else []
+                send_l = bool(getattr(left, "use_image", False))
+                send_r = bool(getattr(left, "use_image", False))
+                refs_l = _refs_for(left, chars, ids_l) if (send_l and ref_wf.exists()) else []
+                refs_r = _refs_for(left, chars, ids_r) if (send_r and ref_wf.exists() and ids_r) else []
             else:
                 combo = f"{pad_slug(left.slug)}_{pad_slug(right.slug)}"
-                refs_l = _refs_for(left, chars) if (send_refs and ref_wf.exists()) else []
-                refs_r = _refs_for(right, chars) if (send_refs and ref_wf.exists()) else []
+                refs_l = _refs_for(left, chars) if (getattr(left, "use_image", False) and ref_wf.exists()) else []
+                refs_r = _refs_for(right, chars) if (getattr(right, "use_image", False) and ref_wf.exists()) else []
                 locks_l = [by[n].lock_text for n in left.character_ids if n in by]
                 locks_r = [by[n].lock_text for n in right.character_ids if n in by]
                 left_scene, right_scene = left.scene_text, right.scene_text
@@ -734,8 +784,11 @@ def post_generate(body: dict[str, Any]) -> dict[str, Any]:
                 layout_text=s.get("layout_text") or "",
                 n_left_refs=min(1, len(refs_l)),
                 n_right_refs=min(1, len(refs_r)),
-                cutout=bool(s.get("ref_cutout")),
-                cutout_text=str(s.get("ref_cutout_text") or ""),
+                cutout=any(
+                    bool(getattr(by.get(n), "ref_cutout", False))
+                    for n in (ids_l + ids_r if inline else list(left.character_ids or []) + list(right.character_ids or []))
+                ),
+                cutout_text=str(book.get("ref_cutout_text") or s.get("ref_cutout_text") or ""),
             )
             job_slug = combo
             seed_from = left
@@ -745,17 +798,24 @@ def post_generate(body: dict[str, Any]) -> dict[str, Any]:
             if skip_done and existing:
                 skipped += 1
                 continue
-            refs = _refs_for(p, chars) if (send_refs and ref_wf.exists()) else []
+            pairs = _ref_pairs(p, chars) if (getattr(p, "use_image", False) and ref_wf.exists()) else []
+            refs = [path for _, path in pairs]
             locks = [by[n].lock_text for n in p.character_ids if n in by]
+            if p.named_ids:
+                locks = []
             assembled = assemble(
                 book.get("style") or s["style"],
                 locks,
                 p.scene_text,
                 book.get("tail") or s["tail"] or "",
                 n_pictures=len(refs),
-                cutout=bool(s.get("ref_cutout")),
-                cutout_text=str(s.get("ref_cutout_text") or ""),
+                cutout=any(
+                    bool(getattr(by.get(n), "ref_cutout", False))
+                    for n in (p.named_ids or p.character_ids or [])
+                ),
+                cutout_text=str(book.get("ref_cutout_text") or s.get("ref_cutout_text") or ""),
                 layout=s.get("layout") or "one",
+                keep_names=[name for name, _ in pairs] or None,
                 layout_text=s.get("layout_text") or "",
             )
             job_slug = p.slug
@@ -1654,7 +1714,7 @@ def demo_bos() -> dict[str, Any]:
     book["prompts_raw"] = BOS_PROMPTS
     book["captions_raw"] = BOS_CAPTIONS
     save_book(s, book)
-    return post_parse()
+    return post_parse({})
 
 
 @app.post("/api/demo/t1")
@@ -1667,7 +1727,7 @@ def demo_t1() -> dict[str, Any]:
     book["prompts_raw"] = T1_PROMPTS
     book["captions_raw"] = T1_CAPTIONS
     save_book(s, book)
-    return post_parse()
+    return post_parse({})
 
 
 @app.get("/api/llm-sheet")

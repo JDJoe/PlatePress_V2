@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Plate Press</title>
-  <link rel="stylesheet" href="/static/style.css?v=20" />
+  <link rel="stylesheet" href="/static/style.css?v=21" />
 </head>
 <body>
   <header>
@@ -39,11 +39,6 @@
       <p class="tiny">Empty on Bos. Two-pane fills the pane closer. Prepended only if this box has text.</p>
       <label>NEG</label>
       <textarea id="neg"></textarea>
-
-      <label class="tiny"><input type="checkbox" id="send_refs" /> Send character stills to Comfy (off = text locks only)</label>
-      <label class="tiny"><input type="checkbox" id="ref_cutout" /> Stills are cutouts (off unless you check it)</label>
-      <textarea id="ref_cutout_text" style="min-height:4rem"></textarea>
-      <p class="tiny">Cutout sentence is sent only when the box is on. Edit it here. On: first still → <code>image1</code>, second → <code>image2</code>.</p>
 
       <h3>Model and LoRAs</h3>
       <p class="tiny">These swap files inside the V3 graph. Do not export a new API workflow. CLIP and VAE stay as they are. The diffusion model must be <strong>Krea 2</strong>.</p>
@@ -111,6 +106,9 @@
     <section id="view-cast" class="view">
       <h2 data-book-heading="Cast"></h2>
       <p class="tiny">This roster belongs only to the open book. ANDROID here is not ANDROID in another book. Load demo cast replaces <em>this</em> book’s characters, not a global list.</p>
+      <label>Cutout sentence</label>
+      <textarea id="ref_cutout_text" style="min-height:4rem"></textarea>
+      <p class="tiny">Sent only for characters with Cutout checked, and only when that plate’s Image column is on.</p>
       <button class="act" id="demo-cast">Load demo cast</button>
       <div id="cast"></div>
       <button class="act ghost" id="add-char">Add character</button>
@@ -133,12 +131,12 @@
           <button type="button" class="act ghost" id="refresh-workflows">Refresh list</button>
         </div>
       </div>
-      <p class="tiny">This book only. Default is Settings <code>Krea2T_V3_ref_clean03-API.json</code>. Open that graph in Comfy, change nodes or parameters, <strong>Save (API Format)</strong>, drop the JSON in this book’s <code>workflows/</code> folder (or shared <code>platepress/workflows/</code>), Refresh list, pick it. Must be based on the default. Extra nodes stay. Settings UNET/LoRAs still apply. The save prefix is still filled so Queue can find files.</p>
-      <p class="tiny">Slug on its own line (<code>p01_wreck</code>). Next line is the Cast token if a still should attach. Then the shot headings. Settings only prepends ink and the layout line. Do not paste aethernouveau here. Say spacecraft, not ship.</p>
+      <p class="tiny">This book only. Default is Settings <code>krea2_character_consistency_workflow-03-API.json</code>. Open that graph in Comfy, change nodes or parameters, <strong>Save (API Format)</strong>, drop the JSON in this book’s <code>workflows/</code> folder (or shared <code>platepress/workflows/</code>), Refresh list, pick it. Must be based on the default. Extra nodes stay. Settings UNET/LoRAs still apply. The save prefix is still filled so Queue can find files.</p>
+      <p class="tiny">Slug on its own line (<code>p01_wreck</code>). Then <code>CHARACTER1 is Anna</code> (Anna is your name for slot 1). Then the shot headings. After Parse, Text and Image columns choose lock, still, both, or neither. Do not paste aethernouveau here. Say spacecraft, not ship.</p>
       <p class="tiny">Plate template — copy into the wall:</p>
       <pre id="plate-template" class="plate-template">p01_slug
-PILOT
-REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and composition from the reference.
+CHARACTER1 is Anna
+REFERENCE: use image1 for costume only. Ignore background, pose, objects, and composition from the reference.
 SHOT: Medium side action shot.
 CAMERA: Where we stand, where we look. Full body / over the shoulder / profile. Both eyes hidden. Does not face the viewer.
 LOCATION: Place, ground, weather or interior. Named objects.
@@ -148,7 +146,7 @@ HANDS: What both hands are doing.
 MOTION: Body, boots, pack, debris, the beat.</pre>
       <button type="button" class="act ghost" id="copy-plate-template">Copy plate template</button>
       <label>Prompts / story</label>
-      <textarea id="prompts_raw" class="tall" placeholder="p01_slug&#10;PILOT&#10;REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and composition from the reference.&#10;SHOT:&#10;CAMERA:&#10;LOCATION:&#10;ACTION: Caught in the instant of &#10;GAZE:&#10;HANDS:&#10;MOTION:"></textarea>
+      <textarea id="prompts_raw" class="tall" placeholder="p01_slug&#10;CHARACTER1 is Anna&#10;REFERENCE: use image1 for costume only. Ignore background, pose, objects, and composition from the reference.&#10;SHOT:&#10;CAMERA:&#10;LOCATION:&#10;ACTION: Caught in the instant of &#10;GAZE:&#10;HANDS:&#10;MOTION:"></textarea>
       <label>Captions</label>
       <textarea id="captions_raw" class="tall" placeholder="p1_cargo&#10;line&#10;line"></textarea>
       <button class="act" id="save-book">Save book</button>
@@ -164,7 +162,10 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
       <table>
         <thead>
           <tr>
-            <th><input type="checkbox" id="slug-all" title="Select all slugs" checked /></th><th>slug</th><th>cast</th><th>metaphor</th><th>warn</th><th>prompt</th>
+            <th><input type="checkbox" id="slug-all" title="Select all slugs" checked /></th>
+            <th><input type="checkbox" id="text-all" title="Use text on all slugs" checked /> text</th>
+            <th><input type="checkbox" id="image-all" title="Use still on all slugs" /> image</th>
+            <th>slug</th><th>cast</th><th>metaphor</th><th>warn</th><th>prompt</th>
           </tr>
         </thead>
         <tbody id="preview"></tbody>
@@ -196,17 +197,16 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
 
       <h3>Settings</h3>
       <ul>
-        <li>Ink, layout line, closer, NEG, UNET, LoRAs, and stills-on/off are shared Settings (not stored on the book). Cast, story, plates, and the book’s API workflow belong to the open book. Default graph: <code>Krea2T_V3_ref_clean03-API.json</code>. NEG is written only if that graph has a CLIP negative node; the shipped default zeros the negative.</li>
+        <li>Ink, layout line, closer, NEG, UNET, LoRAs are shared Settings (not stored on the book). Cast, story, plates, Text/Image per slug, and the book’s API workflow belong to the open book. Default graph: <code>krea2_character_consistency_workflow-03-API.json</code>. NEG is written only if that graph has a CLIP negative node; the shipped default keeps its diptych negative.</li>
         <li><strong>Test connection</strong> first.</li>
         <li><strong>Style cards are the mode.</strong> There is no Plate layout radio.</li>
         <li><strong>Bos, one plate</strong>: each slug is one image. If that slug contains <code>left pane:</code> / <code>right pane:</code>, only that plate splits.</li>
         <li><strong>Two-pane comic</strong>: consecutive slugs share one image (p1 left, p2 right). Do not write “Left pane” yourself. Each pane is its own scene as written.</li>
         <li>Click a card to fill ink, layout line, and matching negatives. World closer stays empty on Bos; two-pane fills the pane closer. The boxes stay editable.</li>
         <li><strong>Ink</strong> and <strong>Layout line</strong> are prepended to every plate. <strong>World closer</strong> only if that box has text (empty on Bos).</li>
-        <li><strong>Send character stills</strong> is off unless you check it. Off: Cast lock is pasted (text locks only). On: named Cast token with a still → <code>image1</code>, lock not pasted. Write <code>REFERENCE: use picture1…</code> on the wall; the app does not add that sentence. No still → no image, lock is pasted.</li>
-        <li><strong>Stills are cutouts</strong> is off unless you check it. The sentence is editable and is not auto-inserted.</li>
+        <li>On Book, each slug has <strong>Text</strong> and <strong>Image</strong>. Text inserts the Cast lock for <code>CHARACTER1</code>. Image sends that card’s still to <code>image1</code>. Both off: the wall is sent as written, no lock, no still. Header checkboxes select or clear a column.</li>
         <li><strong>Model and LoRAs</strong> — shared Settings. <strong>Load lists from Comfy</strong> and pick the exact UNETLoader name. Combo name is the listed folder plus the listed file (<code>KREA2/krea2_turbo_bf16.safetensors</code>). Softlinks keep those names. Must be a Krea 2 UNET. Not saved on the book.</li>
-        <li><strong>API workflow</strong> is per book. Default is Settings <code>Krea2T_V3_ref_clean03-API.json</code>. Open the default in Comfy, change nodes or parameters, <strong>Save (API Format)</strong>, put the JSON in this book’s <code>workflows/</code> folder, pick it on the Book page. Extra nodes stay. The app still fills prompt, seed, Settings UNET/LoRAs, and the save prefix.</li>
+        <li><strong>API workflow</strong> is per book. Default is Settings <code>krea2_character_consistency_workflow-03-API.json</code>. Open the default in Comfy, change nodes or parameters, <strong>Save (API Format)</strong>, put the JSON in this book’s <code>workflows/</code> folder, pick it on the Book page. Extra nodes stay. The app still fills prompt, seed, Settings UNET/LoRAs, and the save prefix.</li>
         <li>Do not touch sampler unless you mean it. Factory: 8 steps, CFG 1, euler, beta.</li>
       </ul>
 
@@ -214,8 +214,8 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
       <ul>
         <li>Cast is per book. Five books can all have ANDROID; they are not the same person.</li>
         <li>Header plus Cast, Book, Queue, and Settings headings show the open book.</li>
-        <li>Name is the token on the wall: <code>PILOT</code> or <code>{PILOT}</code>. Whole word only. <code>PILOT1</code> does not match <code>PILOT</code>.</li>
-        <li>Lock is face + suit + pack. Stills off: pasted into the prompt. Stills on: not pasted; the still is identity. Put pose and <code>picture1</code> on the Book wall.</li>
+        <li>First card is <code>CHARACTER1</code> / <code>PILOT1</code>, second is <code>CHARACTER2</code>. The name on the card is for you; <code>Anna</code> in the wall is writer text.</li>
+        <li>Lock is face + suit + pack. Per-slug Text on Book inserts it. Per-slug Image sends the still. Cutout is per character on this page.</li>
         <li>A name like <code>PATRON</code> only works if that card exists on this book.</li>
         <li>0–3 local stills per card. One body. Frontal portraits make the figure find the camera.</li>
         <li><strong>Lock seed</strong> on a thumb in Queue, then later plates of that character can reuse it.</li>
@@ -225,8 +225,8 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
       <h3>Book</h3>
       <p>Story wall (copy the template on the Book page):</p>
       <pre>p01_slug
-PILOT
-REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and composition from the reference.
+CHARACTER1 is Anna
+REFERENCE: use image1 for costume only. Ignore background, pose, objects, and composition from the reference.
 SHOT: Medium side action shot.
 CAMERA: Where we stand, where we look. Both eyes hidden. Does not face the viewer.
 LOCATION: Place, ground, weather or interior.
@@ -235,15 +235,15 @@ GAZE: Eyes on a named thing in the frame, never the viewer.
 HANDS: What both hands are doing.
 MOTION: Body, boots, pack, debris, the beat.</pre>
       <ul>
-        <li>Slug on its own line (<code>p01_wreck</code>). Token on the next line must match Cast <strong>Name</strong> if a still should attach.</li>
+        <li>Slug on its own line (<code>p01_wreck</code>). <code>CHARACTER1 is Anna</code> (or <code>PILOT1</code>): slot 1 is the first Cast card; Anna is writer text. Book <strong>Text</strong> replaces <code>CHARACTER1</code> with the lock. <strong>Image</strong> (Text off) turns it into <code>image1 is Anna</code> and uploads the still. SHOT/ACTION/REFERENCE stay writer text. No KEEP line is added.</li>
         <li>Do not paste ink, closer, sampler, or <code>aethernouveau</code> here. The app prepends ink and the layout line (and closer if that box is not empty).</li>
         <li>Hide the eyes. Working verb: <strong>caught in the instant of [verb]</strong>.</li>
         <li>Captions: same slugs, keep newlines, in the <strong>Captions</strong> box. Caption is the moral. Prompt is the camera.</li>
         <li>The default book is the demo. It cannot be deleted from the UI.</li>
         <li><strong>Parse</strong> before generate. Check the two-shot column. Click a prompt (or Copy) to copy the full assembled text Comfy will get.</li>
-        <li>The table header checkbox selects or clears every slug.</li>
+        <li>Header checkboxes: generate-select, Text column, Image column.</li>
         <li><strong>Generate selected</strong> uses the checked rows and always queues a new version. It Parses first. Skip only applies to Generate missing.</li>
-        <li>Assembler: <strong>ink, layout line, closer (if any), Cast lock if stills off, Book wall</strong>. Stills sentences are not auto-inserted.</li>
+        <li>Assembler: <strong>ink, layout line, closer (if any), Book wall</strong>. No KEEP line is added.</li>
         <li>Two-pane comic: one checked row uses the next slug as the right pane. Write a full shot on each slug.</li>
         <li>Default: 2 random seeds per plate.</li>
         <li><strong>Copy instructions for your LLM</strong> copies the sheet plus current locks (identity notes, not prompt prefix).</li>
@@ -252,10 +252,10 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
 
       <h3>Refs</h3>
       <ul>
-        <li>Off unless <strong>Send character stills</strong> is checked.</li>
-        <li>One still per Cast token named on that plate. <code>PILOT</code> attaches; <code>PILOT1</code> does not.</li>
+        <li>Per slug <strong>Image</strong> column. <code>CHARACTER1</code> → <code>image1</code>, <code>CHARACTER2</code> → <code>image2</code>.</li>
+        <li>Text off + Image on: the wall reads <code>image1 is Anna</code>. Write KEEP/REFERENCE yourself if you want it.</li>
         <li>Frontal “look at me” stills clone that pose. Prefer a full-body costume still.</li>
-        <li>Cutouts: optional checkbox plus editable sentence. Prefer writing REFERENCE on the wall.</li>
+        <li>Cutout is per Cast card. Prefer writing REFERENCE on the wall.</li>
       </ul>
 
       <h3>Queue / Letter</h3>
@@ -279,6 +279,6 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
       </ul>
     </section>
   </main>
-  <script src="/static/app.js?v=43"></script>
+  <script src="/static/app.js?v=44"></script>
 </body>
 </html>

@@ -180,9 +180,10 @@ PKG = Path(__file__).resolve().parent
 DEFAULT_SETTINGS_PATH = PKG / "settings.json"
 DEMO_BOOK_ID = "default"
 DEMO_SEED = PKG / "demo" / "bos"
-DEFAULT_API_WORKFLOW = "Krea2T_V3_ref_clean03-API.json"
+DEFAULT_API_WORKFLOW = "krea2_character_consistency_workflow-03-API.json"
 _LEGACY_API_WORKFLOWS = {
     "Krea2T_V3_ref_clean01-API.json",
+    "Krea2T_V3_ref_clean03-API.json",
 }
 _PATH_KEYS = ("workflow_text", "workflow_ref", "output_root", "models_dir", "loras_dir")
 _SYMLINK_PATH_KEYS = ("models_dir", "loras_dir")

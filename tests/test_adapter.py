@@ -44,30 +44,31 @@ QWEN_MIN = {
 }
 
 
-def test_detect_v3_ref_workflow():
+def test_detect_consistency_workflow():
     wf = load_workflow(V3)
     m = detect(wf)
-    assert m.positive == "16"
+    assert m.positive == "13"
     assert m.positive_key == "prompt"
-    assert wf[m.positive]["class_type"] == "TextEncodeKrea2"
+    assert wf[m.positive]["class_type"] == "TextEncodeQwenImageEditPlus"
+    assert "positive" in (wf[m.positive].get("_meta") or {}).get("title", "").lower()
     assert m.is_ref_workflow is True
-    assert m.load_images == ["11", "12", "13"]
-    assert m.negative == "18"
-    assert m.negative_has_text is False
-    assert m.rebalance == "17"
-    assert m.previews == ["15"]
-    assert m.sampler == "8"
-    assert m.lora == "7"
-    assert m.unet == "4"
-    assert m.latent == "10"
-    assert m.save == "14"
+    assert m.load_images == ["7", "28", "29"]
+    assert m.negative == "14"
+    assert m.negative_has_text is True
+    assert m.ref_latent == "23"
+    assert m.ref_vae_encode == "22"
+    assert m.sampler == "15"
+    assert m.lora == "27"
+    assert m.unet == "6"
+    assert m.latent == "24"
+    assert m.save == "21"
     assert m.ref_method is None
 
 
 def test_load_ui_graph_uses_api_sibling():
-    ui = ROOT / "Krea2T_V3_ref_clean03.json"
+    ui = ROOT / "krea2_character_consistency_workflow-03.json"
     wf = load_workflow(ui)
-    assert wf["16"]["class_type"] == "TextEncodeKrea2"
+    assert wf["13"]["class_type"] == "TextEncodeQwenImageEditPlus"
     assert "nodes" not in wf
 
 
@@ -84,26 +85,23 @@ def test_fill_ref_one_image_drops_unused_loaders():
         image_names=["android.png"],
         batch_size=1,
     )
-    assert out["16"]["inputs"]["prompt"] == "hello"
-    assert out["16"]["inputs"]["image1"] == ["11", 0]
-    assert "vae" not in out["16"]["inputs"]
-    assert "image2" not in out["16"]["inputs"]
-    assert "12" not in out
-    assert "13" not in out
-    assert out["11"]["inputs"]["image"] == "android.png"
-    assert out["10"]["inputs"]["batch_size"] == 1
-    assert out["8"]["inputs"]["seed"] == 42
-    assert out["8"]["inputs"]["control_after_generate"] == "fixed"
-    assert out["14"]["inputs"]["filename_prefix"] == "PP_test_t1_one_42"
-    assert out["7"]["inputs"]["lora_01"].endswith("merged.safetensors")
-    assert out["7"]["inputs"]["strength_01"] == 0.8
-    # Rebalance stays between encode and sampler. Do not rewire to node 16.
-    assert out["8"]["inputs"]["positive"] == ["17", 0]
-    assert out["8"]["inputs"]["negative"] == ["18", 0]
-    assert out["18"]["class_type"] == "ConditioningZeroOut"
-    assert "text" not in out["18"]["inputs"]
-    assert "15" not in out
-    assert "mask2" not in out["16"]["inputs"]
+    assert out["13"]["inputs"]["prompt"] == "hello"
+    assert out["13"]["inputs"]["image1"] == ["7", 0]
+    assert "image2" not in out["13"]["inputs"]
+    assert "28" not in out
+    assert "29" not in out
+    assert out["7"]["inputs"]["image"] == "android.png"
+    assert out["24"]["inputs"]["batch_size"] == 1
+    assert out["15"]["inputs"]["seed"] == 42
+    assert out["15"]["inputs"]["control_after_generate"] == "fixed"
+    assert out["21"]["inputs"]["filename_prefix"] == "PP_test_t1_one_42"
+    assert out["27"]["inputs"]["lora_01"].endswith("merged.safetensors")
+    assert out["27"]["inputs"]["strength_01"] == 0.8
+    # Keep ReferenceLatent between encode and sampler.
+    assert out["15"]["inputs"]["positive"] == ["23", 0]
+    assert out["15"]["inputs"]["negative"] == ["14", 0]
+    assert "diptych" in out["14"]["inputs"]["prompt"]
+    assert out["14"]["inputs"]["prompt"] != "neg"
 
 
 def test_fill_no_still_drops_all_loaders():
@@ -118,15 +116,15 @@ def test_fill_no_still_drops_all_loaders():
         lora_strength=0.5,
         image_names=[],
     )
-    assert out["16"]["inputs"]["prompt"] == "hello"
-    assert "image1" not in out["16"]["inputs"]
-    assert "image2" not in out["16"]["inputs"]
-    assert "11" not in out
-    assert "12" not in out
-    assert "13" not in out
-    assert "15" not in out
-    assert "3" not in out
-    assert "text" not in out["18"]["inputs"]
+    assert out["13"]["inputs"]["prompt"] == "hello"
+    assert "image1" not in out["13"]["inputs"]
+    assert "image2" not in out["13"]["inputs"]
+    assert "7" not in out
+    assert "28" not in out
+    assert "29" not in out
+    assert "22" not in out
+    assert "23" not in out
+    assert out["15"]["inputs"]["positive"] == ["13", 0]
 
 
 def test_fill_two_stills_keeps_image2():
@@ -141,13 +139,13 @@ def test_fill_two_stills_keeps_image2():
         lora_strength=0.5,
         image_names=["a.png", "b.png"],
     )
-    assert out["16"]["inputs"]["image1"] == ["11", 0]
-    assert out["16"]["inputs"]["image2"] == ["12", 0]
-    assert "image3" not in out["16"]["inputs"]
-    assert out["11"]["inputs"]["image"] == "a.png"
-    assert out["12"]["inputs"]["image"] == "b.png"
-    assert "13" not in out
-    assert out["8"]["inputs"]["positive"] == ["17", 0]
+    assert out["13"]["inputs"]["image1"] == ["7", 0]
+    assert out["13"]["inputs"]["image2"] == ["28", 0]
+    assert "image3" not in out["13"]["inputs"]
+    assert out["7"]["inputs"]["image"] == "a.png"
+    assert out["28"]["inputs"]["image"] == "b.png"
+    assert "29" not in out
+    assert out["15"]["inputs"]["positive"] == ["23", 0]
 
 
 def test_fill_legacy_qwen_graph_still_works():
@@ -188,14 +186,14 @@ def test_fill_unet_and_lora_stack():
             {"name": "extra/two.safetensors", "strength": 0.4},
         ],
     )
-    assert out["4"]["inputs"]["unet_name"] == "KREA2/krea2_turbo_bf16.safetensors"
-    assert out["7"]["inputs"]["lora_01"] == "style/one.safetensors"
-    assert out["7"]["inputs"]["strength_01"] == 0.8
-    assert out["7"]["inputs"]["lora_02"] == "extra/two.safetensors"
-    assert out["7"]["inputs"]["strength_02"] == 0.4
-    assert out["7"]["inputs"]["lora_03"] == "None"
-    assert out["7"]["inputs"]["strength_03"] == 0.0
-    assert out["7"]["inputs"]["lora_04"] == "None"
+    assert out["6"]["inputs"]["unet_name"] == "KREA2/krea2_turbo_bf16.safetensors"
+    assert out["27"]["inputs"]["lora_01"] == "style/one.safetensors"
+    assert out["27"]["inputs"]["strength_01"] == 0.8
+    assert out["27"]["inputs"]["lora_02"] == "extra/two.safetensors"
+    assert out["27"]["inputs"]["strength_02"] == 0.4
+    assert out["27"]["inputs"]["lora_03"] == "None"
+    assert out["27"]["inputs"]["strength_03"] == 0.0
+    assert out["27"]["inputs"]["lora_04"] == "None"
 
 
 def test_still_for_comfy_rewrites_jpeg_as_png(tmp_path):
