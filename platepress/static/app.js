@@ -438,6 +438,15 @@ function collectSlugOpts() {
   return opts;
 }
 
+function parsePayload() {
+  return {
+    slug_opts: collectSlugOpts(),
+    use_text_default: !!($("text-all") && $("text-all").checked),
+    use_image_default: !!($("image-all") && $("image-all").checked),
+    use_letter_default: !!($("letter-all") && $("letter-all").checked),
+  };
+}
+
 function renderPreview(plates, warnings, checkedSlugs) {
   const tb = $("preview");
   tb.innerHTML = "";
@@ -578,12 +587,25 @@ function setAllCol(kind, on) {
   onSlugOptChange();
 }
 
-function onSlugOptChange() {
+async function onSlugOptChange() {
   book.slug_opts = collectSlugOpts();
   syncColAll("text");
   syncColAll("image");
   syncColAll("letter");
-  saveBookSilent().catch((e) => showBanner(e.message, "err"));
+  try {
+    await saveBookSilent();
+    const picked = selectedSlugs();
+    const r = await j("/api/parse", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(parsePayload()),
+    });
+    book.plates = r.plates;
+    renderPreview(r.plates, r.warnings, picked);
+    if (r.notice) showBanner(r.notice, "warn");
+  } catch (e) {
+    showBanner(e.message, "err");
+  }
 }
 
 async function saveBookSilent() {
@@ -910,7 +932,7 @@ async function generate(mode) {
     await saveBookSilent();
     const body = {
       skip_done: $("skip_done").checked,
-      slug_opts: collectSlugOpts(),
+      ...parsePayload(),
     };
     if (mode === "all") body.skip_done = false;
     if (mode === "sel") {
@@ -918,7 +940,7 @@ async function generate(mode) {
       const parsed = await j("/api/parse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug_opts: collectSlugOpts() }),
+        body: JSON.stringify(parsePayload()),
       });
       renderPreview(parsed.plates || [], parsed.warnings || [], picked);
       book.plates = parsed.plates;
@@ -1080,7 +1102,7 @@ $("parse").onclick = async () => {
   const r = await j("/api/parse", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ slug_opts: collectSlugOpts() }),
+    body: JSON.stringify(parsePayload()),
   });
   book.plates = r.plates;
   renderPreview(r.plates, r.warnings);

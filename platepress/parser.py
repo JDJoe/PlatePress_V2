@@ -23,6 +23,7 @@ _INLINE_PANES = re.compile(
 )
 # CHARACTER1 / PILOT1 → Cast slot 1. The name after "is" is writer text, not a lookup.
 _CHAR_TOKEN = re.compile(r"(?i)\b(?:CHARACTER|PILOT)(\d+)\b")
+_SLOT_LOCK_LINE = re.compile(r"(?i)^(?:CHARACTER|PILOT)\d+\s+is\b")
 _NO_LETTER_LAYOUT = re.compile(
     r",?\s*no (?:text|captions|speech balloons|letters)\b",
     re.I,
@@ -522,6 +523,42 @@ def _spacecraft(text: str) -> str:
     return _VESSEL.sub("spacecraft", text or "")
 
 
+def _join_scene_clauses(clauses: list[str]) -> str:
+    """Join wall chunks as sentences. 'CHARACTER1 is Celine' then 'Celine, …' must not glue."""
+    parts = [c.strip() for c in clauses if c and str(c).strip()]
+    if not parts:
+        return ""
+    out = parts[0]
+    for nxt in parts[1:]:
+        if out[-1] in ",;:":
+            out = out.rstrip(",; ") + "."
+        elif out[-1] not in ".!?":
+            out += "."
+        out += " " + nxt
+    return out
+
+
+def _flatten_scene(scene: str) -> str:
+    """One line for the API. Blank lines and CHARACTER1 is … stay their own sentences."""
+    clauses: list[str] = []
+    for para in re.split(r"\n\s*\n", scene or ""):
+        chunk: list[str] = []
+        for raw in para.splitlines():
+            ln = re.sub(r"\s+", " ", raw).strip()
+            if not ln:
+                continue
+            if _SLOT_LOCK_LINE.match(ln):
+                if chunk:
+                    clauses.append(" ".join(chunk))
+                    chunk = []
+                clauses.append(ln)
+            else:
+                chunk.append(ln)
+        if chunk:
+            clauses.append(" ".join(chunk))
+    return _join_scene_clauses(clauses)
+
+
 def _image_slots(text: str) -> str:
     """picture1 → image1 so Qwen binds the still that was uploaded."""
     return re.sub(r"\bpicture(\d+)\b", r"image\1", text or "", flags=re.I)
@@ -769,6 +806,9 @@ def parse_book(
     use_text_for: dict[str, bool] | None = None,
     use_image_for: dict[str, bool] | None = None,
     use_letter_for: dict[str, bool] | None = None,
+    text_default: bool = False,
+    image_default: bool = False,
+    letter_default: bool = False,
 ) -> ParseResult:
     names = [c.name for c in characters]
     name_set = set(names)
@@ -791,9 +831,10 @@ def parse_book(
     for i, (slug, raw_body) in enumerate(prompt_items, start=1):
         pw: list[str] = []
         body = _strip_style_tail(raw_body, style, tail, pw, slug)
-        use_text = _slug_flag(use_text_for, slug, False)
-        use_image = _slug_flag(use_image_for, slug, False)
-        use_letter = _slug_flag(use_letter_for, slug, False)
+        body = _flatten_scene(body)
+        use_text = _slug_flag(use_text_for, slug, text_default)
+        use_image = _slug_flag(use_image_for, slug, image_default)
+        use_letter = _slug_flag(use_letter_for, slug, letter_default)
         decls = parse_character_decls(body, names)
         if decls:
             hits = [n for _, n in decls] if (use_text or use_image) else []
@@ -812,7 +853,6 @@ def parse_book(
             named = []
             scene = body
             locks_for_assemble = []
-        scene = re.sub(r"\s+", " ", scene).strip()
         scene = _image_slots(_spacecraft(scene))
         if re.search(r"\bKEEP\b", scene, re.I):
             scene = re.sub(r"\s*for costume only\b", "", scene, flags=re.I)

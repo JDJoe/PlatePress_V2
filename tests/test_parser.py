@@ -262,8 +262,74 @@ braced in a narrow hold,
 the crate seams gleaming like liquid silver
 """
     r = parse_book(wall, "", CAST)
-    assert "narrow hold" in r.plates[0].scene_text
-    assert "liquid silver" in r.plates[0].scene_text
+    scene = r.plates[0].scene_text
+    assert "narrow hold" in scene
+    assert "liquid silver" in scene
+    assert "hold,." not in scene
+    assert "hold. the crate" in scene
+
+
+def test_text_on_replaces_character1_with_lock():
+    cast = [Character(id="c", name="Celine", lock_text="A blond 30 year old")]
+    wall = """
+p001_bed
+CHARACTER1 is Celine
+
+Celine, a woman with focused expression, turns a brass dial on the bedside table with two fingers.
+"""
+    r = parse_book(wall, "", cast, use_text_for={"p001_bed": True})
+    p = r.plates[0]
+    assert p.use_text is True
+    assert "CHARACTER1" not in p.scene_text
+    assert "CHARACTER1" not in p.assembled
+    assert p.scene_text.startswith("A blond 30 year old is Celine.")
+    assert "Celine, a woman with focused expression" in p.scene_text
+    assert "A blond 30 year old is Celine." in p.assembled
+
+
+def test_text_default_on_expands_without_per_slug_opt():
+    cast = [Character(id="c", name="Celine", lock_text="A blond 30 year old")]
+    wall = """
+p001_bed
+CHARACTER1 is Celine
+Celine, a woman with focused expression, turns a brass dial.
+"""
+    r = parse_book(wall, "", cast, text_default=True)
+    p = r.plates[0]
+    assert p.use_text is True
+    assert "CHARACTER1" not in p.assembled
+    assert "A blond 30 year old is Celine." in p.assembled
+
+
+def test_character_lock_line_does_not_glue_to_name():
+    wall = """
+p001_bed
+CHARACTER1 is Celine
+
+Celine, a woman with focused expression, turns a brass dial on the bedside table with two fingers.
+"""
+    r = parse_book(wall, "", CAST)
+    p = r.plates[0]
+    assert "CHARACTER1 is Celine Celine" not in p.scene_text
+    assert "CHARACTER1 is Celine Celine" not in p.assembled
+    assert "CHARACTER1 is Celine." in p.scene_text
+    assert "Celine, a woman with focused expression" in p.scene_text
+    assert "CHARACTER1 is Celine." in p.assembled
+
+
+def test_character_lock_line_split_without_blank():
+    wall = """
+p01_heist
+CHARACTER1 is Anna
+SHOT: Wide action shot inside a cargo bay.
+ACTION: Anna is forcing open the alien container.
+"""
+    r = parse_book(wall, "", CAST)
+    scene = r.plates[0].scene_text
+    assert "CHARACTER1 is Anna." in scene
+    assert "SHOT: Wide action shot" in scene
+    assert "CHARACTER1 is Anna SHOT" not in scene
+    assert "CHARACTER1 is Anna. SHOT" in scene
 
 
 def test_image_on_without_pilot_uses_first_cast_still():

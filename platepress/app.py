@@ -255,15 +255,26 @@ def _slug_opt_maps(
     return text, image, letter
 
 
+def _col_defaults(body: dict[str, Any] | None) -> dict[str, bool]:
+    body = body or {}
+    return {
+        "text": bool(body.get("use_text_default", False)),
+        "image": bool(body.get("use_image_default", False)),
+        "letter": bool(body.get("use_letter_default", False)),
+    }
+
+
 def _parse(
     book: dict[str, Any],
     s: dict[str, Any],
     picture_counts: dict[str, int] | None = None,
+    col_defaults: dict[str, bool] | None = None,
 ):
     chars = _chars(book)
     style = book.get("style") or s["style"]
     tail = book.get("tail") or s.get("tail") or ""
     use_text_for, use_image_for, use_letter_for = _slug_opt_maps(book)
+    col_defaults = col_defaults or {}
     return parse_book(
         book.get("prompts_raw") or "",
         book.get("captions_raw") or "",
@@ -278,6 +289,9 @@ def _parse(
         use_text_for=use_text_for,
         use_image_for=use_image_for,
         use_letter_for=use_letter_for,
+        text_default=bool(col_defaults.get("text", False)),
+        image_default=bool(col_defaults.get("image", False)),
+        letter_default=bool(col_defaults.get("letter", False)),
     )
 
 
@@ -596,14 +610,15 @@ def post_parse(body: dict[str, Any] | None = Body(default=None)) -> dict[str, An
         book["slug_opts"] = body["slug_opts"]
     chars = _chars(book)
     picture_counts: dict[str, int] = {}
-    result = _parse(book, s)
+    col = _col_defaults(body)
+    result = _parse(book, s, col_defaults=col)
     ref_path = Path(s.get("workflow_ref") or "")
     _, use_image_for, _ = _slug_opt_maps(book)
     for p in result.plates:
         want_img = bool(getattr(p, "use_image", False)) or bool(use_image_for.get(p.slug))
         pairs = _ref_pairs(p, chars) if (want_img and ref_path.exists()) else []
         picture_counts[p.slug] = len(pairs)
-    result = _parse(book, s, picture_counts)
+    result = _parse(book, s, picture_counts, col_defaults=col)
     book["plates"] = [
         {
             "slug": p.slug,
@@ -683,7 +698,7 @@ def post_generate(body: dict[str, Any]) -> dict[str, Any]:
         book["slug_opts"] = body["slug_opts"]
         save_book(s, book)
     chars = _chars(book)
-    parsed = _parse(book, s)
+    parsed = _parse(book, s, col_defaults=_col_defaults(body))
     if not parsed.plates:
         raise HTTPException(400, "no plates — paste a prompt wall and Parse")
     slugs = body.get("slugs")
