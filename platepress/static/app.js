@@ -206,7 +206,7 @@ function markActiveExample() {
   });
 }
 
-function applyExample(ex) {
+async function applyExample(ex) {
   if (!ex) return;
   $("style").value = ex.style || "";
   $("layout_text").value = ex.layout_text || "";
@@ -216,6 +216,17 @@ function applyExample(ex) {
   settings.layout = ex.layout || "one";
   markActiveExample();
   updateAssemblePreview();
+  try {
+    settings = await j("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(readSettings()),
+    });
+    fillSettings(settings);
+    showBanner("using " + (ex.label || ex.id) + " — settings saved", "ok");
+  } catch (e) {
+    showBanner(e.message, "err");
+  }
 }
 
 function fillSettings(s) {
@@ -406,8 +417,9 @@ async function copyAssembled(text, slug) {
 function slugOpt(slug) {
   const o = (book.slug_opts && book.slug_opts[slug]) || {};
   return {
-    use_text: o.use_text !== false,
+    use_text: !!o.use_text,
     use_image: !!o.use_image,
+    use_letter: !!o.use_letter,
   };
 }
 
@@ -420,6 +432,7 @@ function collectSlugOpts() {
     opts[slug] = {
       use_text: !!(tr.querySelector("input[data-use-text]") || {}).checked,
       use_image: !!(tr.querySelector("input[data-use-image]") || {}).checked,
+      use_letter: !!(tr.querySelector("input[data-use-letter]") || {}).checked,
     };
   });
   return opts;
@@ -436,11 +449,10 @@ function renderPreview(plates, warnings, checkedSlugs) {
     const on = !checkedSlugs || checkedSlugs.some((s) => s === p.slug);
     const assembled = p.assembled || "";
     const opt = {
-      use_text: p.use_text !== false && slugOpt(p.slug).use_text,
+      use_text: !!(p.use_text || slugOpt(p.slug).use_text),
       use_image: !!(p.use_image || slugOpt(p.slug).use_image),
+      use_letter: !!(p.use_letter || slugOpt(p.slug).use_letter),
     };
-    if (p.use_text === false) opt.use_text = false;
-    if (p.use_image === true) opt.use_image = true;
 
     const tdCheck = document.createElement("td");
     const cb = document.createElement("input");
@@ -462,6 +474,13 @@ function renderPreview(plates, warnings, checkedSlugs) {
     cbImg.dataset.useImage = "1";
     cbImg.checked = opt.use_image;
     tdImg.appendChild(cbImg);
+
+    const tdLetter = document.createElement("td");
+    const cbLetter = document.createElement("input");
+    cbLetter.type = "checkbox";
+    cbLetter.dataset.useLetter = "1";
+    cbLetter.checked = opt.use_letter;
+    tdLetter.appendChild(cbLetter);
 
     const tdSlug = document.createElement("td");
     const code = document.createElement("code");
@@ -497,7 +516,7 @@ function renderPreview(plates, warnings, checkedSlugs) {
       tdPrompt.addEventListener("click", () => copyAssembled(assembled, p.slug));
     }
 
-    tr.append(tdCheck, tdText, tdImg, tdSlug, tdCast, tdMeta, tdWarn, tdPrompt);
+    tr.append(tdCheck, tdText, tdImg, tdLetter, tdSlug, tdCast, tdMeta, tdWarn, tdPrompt);
     tb.appendChild(tr);
   });
   slugBoxes().forEach((el) => el.addEventListener("change", syncSlugAll));
@@ -507,9 +526,13 @@ function renderPreview(plates, warnings, checkedSlugs) {
   document.querySelectorAll("#preview input[data-use-image]").forEach((el) => {
     el.addEventListener("change", onSlugOptChange);
   });
+  document.querySelectorAll("#preview input[data-use-letter]").forEach((el) => {
+    el.addEventListener("change", onSlugOptChange);
+  });
   syncSlugAll();
   syncColAll("text");
   syncColAll("image");
+  syncColAll("letter");
   if (warnings && warnings.length) showBanner(warnings.join(" · "), "warn");
 }
 
@@ -536,12 +559,12 @@ function setAllSlugs(on) {
 }
 
 function colBoxes(kind) {
-  const key = kind === "image" ? "data-use-image" : "data-use-text";
+  const key = kind === "image" ? "data-use-image" : kind === "letter" ? "data-use-letter" : "data-use-text";
   return [...document.querySelectorAll(`#preview input[${key}]`)];
 }
 
 function syncColAll(kind) {
-  const head = $(kind === "image" ? "image-all" : "text-all");
+  const head = $(kind === "image" ? "image-all" : kind === "letter" ? "letter-all" : "text-all");
   if (!head) return;
   const boxes = colBoxes(kind);
   const n = boxes.filter((el) => el.checked).length;
@@ -559,6 +582,7 @@ function onSlugOptChange() {
   book.slug_opts = collectSlugOpts();
   syncColAll("text");
   syncColAll("image");
+  syncColAll("letter");
   saveBookSilent().catch((e) => showBanner(e.message, "err"));
 }
 
@@ -620,6 +644,27 @@ async function loadBook() {
   if (r.notice) showBanner(r.notice, "warn");
 }
 
+function openLightbox(url, name) {
+  const box = $("lightbox");
+  const img = $("lightbox-img");
+  const cap = $("lightbox-cap");
+  if (!box || !img) return;
+  img.src = url || "";
+  img.alt = name || "";
+  if (cap) cap.textContent = name || "";
+  box.classList.add("on");
+  box.removeAttribute("hidden");
+}
+
+function closeLightbox() {
+  const box = $("lightbox");
+  const img = $("lightbox-img");
+  if (!box) return;
+  box.classList.remove("on");
+  box.setAttribute("hidden", "");
+  if (img) img.src = "";
+}
+
 function slugsInName(name) {
   const stem = String(name || "").replace(/\.[a-z0-9]+$/i, "");
   const re = /(?:^|_)((?:p|t)\d+_[A-Za-z0-9]+(?:_(?!p\d+_|t\d+_|\d+$)[A-Za-z0-9]+)*)/gi;
@@ -642,14 +687,18 @@ function thumbFigure(t, names) {
   const lockBtn = seed
     ? `<button class="act ghost" data-lock="${seed}">Lock seed</button>`
     : "";
+  const letteredMark = t.lettered ? " · lettered" : "";
+  const letterBtn = t.lettered
+    ? ""
+    : `<button class="act ghost" data-letter="${slug}">Letter this</button>`;
   fig.innerHTML = `
-    <img src="${t.url}" alt="${t.name}" />
-    <figcaption>${t.name || ""}</figcaption>
+    <img src="${t.url}" alt="${t.name}" data-full="${t.url}" data-full-name="${t.name || ""}" />
+    <figcaption>${t.name || ""}${letteredMark}</figcaption>
     <select data-char>${opts}</select>
     ${lockBtn}
     <button class="act ghost" data-reroll="${slug}">Reroll</button>
     <button class="act ghost" data-asref="${t.path}">Use as ref</button>
-    <button class="act ghost" data-letter="${slug}">Letter this</button>
+    ${letterBtn}
     <button class="act ghost" data-rmfile="${encodeURIComponent(t.path)}" data-bookid="${bid}">Delete file</button>
   `;
   return fig;
@@ -699,6 +748,12 @@ async function refreshRuns() {
     });
   }
   box.appendChild(sec);
+  box.querySelectorAll(".thumbs img[data-full]").forEach((el) => {
+    el.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      openLightbox(el.getAttribute("data-full") || el.src, el.getAttribute("data-full-name") || el.alt || "");
+    });
+  });
   box.querySelectorAll("[data-lock]").forEach((el) => {
     el.addEventListener("click", async () => {
       const sel = el.parentElement.querySelector("[data-char]");
@@ -754,6 +809,7 @@ async function refreshRuns() {
             body: JSON.stringify({ slug }),
           });
           showBanner(`lettered ${r.lettered}`, "ok");
+          await refreshRuns();
         });
       } catch (e) { showBanner(e.message, "err"); }
     });
@@ -1052,19 +1108,25 @@ $("gen-sel").onclick = () => generate("sel");
 $("slug-all").addEventListener("change", () => setAllSlugs($("slug-all").checked));
 $("text-all").addEventListener("change", () => setAllCol("text", $("text-all").checked));
 $("image-all").addEventListener("change", () => setAllCol("image", $("image-all").checked));
-$("letter-all").onclick = async () => {
-  showBanner("lettering all…", "ok");
-  try {
-    await withBusy($("letter-all"), "Lettering…", async () => {
-      const r = await j("/api/letter", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+if ($("letter-all")) {
+  $("letter-all").addEventListener("change", () => setAllCol("letter", $("letter-all").checked));
+}
+if ($("letter-all-btn")) {
+  $("letter-all-btn").onclick = async () => {
+    showBanner("lettering all…", "ok");
+    try {
+      await withBusy($("letter-all-btn"), "Lettering…", async () => {
+        const r = await j("/api/letter", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        showBanner(`lettered ${r.lettered}, skipped ${r.skipped}`, "ok");
+        await refreshRuns();
       });
-      showBanner(`lettered ${r.lettered}, skipped ${r.skipped}`, "ok");
-    });
-  } catch (e) { showBanner(e.message, "err"); }
-};
+    } catch (e) { showBanner(e.message, "err"); }
+  };
+}
 $("export").onclick = async () => {
   const r = await j("/api/export", { method: "POST" });
   showBanner(`export ${r.dir}`, "ok");
@@ -1123,6 +1185,21 @@ async function startNewBook() {
 }
 document.querySelectorAll(".js-new-book").forEach((el) => {
   el.onclick = startNewBook;
+});
+if ($("lightbox")) {
+  $("lightbox").addEventListener("click", (ev) => {
+    if (ev.target && ev.target.id === "lightbox-img") return;
+    closeLightbox();
+  });
+}
+if ($("lightbox-close")) {
+  $("lightbox-close").addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    closeLightbox();
+  });
+}
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape") closeLightbox();
 });
 if ($("copy-plate-template")) {
   $("copy-plate-template").onclick = async () => {

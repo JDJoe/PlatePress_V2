@@ -27,7 +27,7 @@ Settings **Model and LoRAs** are shared (not stored on the book). Load lists fro
 
 ## Cast lock
 
-Lock = face + suit + pack. Book Text on: CHARACTER1 becomes the lock. Image on, Text off: CHARACTER1 is Anna becomes image1 is Anna. Put pose on the Book wall.
+Lock = face + suit + pack. Book Text on prepends that lock. PILOT1 is PingPong stays as written. Write KEEP yourself. Put pose on the Book wall.
 
 **Never put in the lock:**
 - looking back over her shoulder

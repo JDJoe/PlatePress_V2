@@ -16,12 +16,68 @@ _BRACE = re.compile(r"\{([A-Za-z][A-Za-z0-9_]*)\}")
 SLUG_PAD = 3
 # Krea still hears "ship" inside spaceship/starship and paints sails.
 _VESSEL = re.compile(r"\b(?:star|space)?ships?\b", re.I)
+# Qwen still slots are image1..image3. "picture1" does not bind the LoadImage.
 _INLINE_PANES = re.compile(
     r"left\s*pane\s*[:,]?\s*(.*?)\s*right\s*pane\s*[:,]?\s*(.*)",
     re.I | re.S,
 )
 # CHARACTER1 / PILOT1 → Cast slot 1. The name after "is" is writer text, not a lookup.
 _CHAR_TOKEN = re.compile(r"(?i)\b(?:CHARACTER|PILOT)(\d+)\b")
+_NO_LETTER_LAYOUT = re.compile(
+    r",?\s*no (?:text|captions|speech balloons|letters)\b",
+    re.I,
+)
+_NO_TEXT_TAIL = re.compile(r"No text\.\s*", re.I)
+
+# Caption-wall tags → balloon / box instructions. Codes must not parse as slugs.
+LETTER_SHAPES: dict[str, str] = {
+    "NS": "a normal oval speech balloon with a tail, white fill, thin black ink outline",
+    "NSV": "a tall oval speech balloon with a tail, letters stacked or set vertically, white fill, thin black ink outline",
+    "NS2": "two connected oval speech balloons sharing one tail, white fill, thin black ink outline",
+    "OFFP": "a round speech balloon whose tail points off the panel edge, off-panel speaker, white fill, thin black ink outline",
+    "YELL": "a spiky burst speech balloon, shouting, white fill, thin black ink outline, bold letters",
+    "FADE": "a wobbly fading speech balloon, weak voice, white fill, thin black ink outline",
+    "WHISP": "an oval speech balloon with a dashed outline, whispering, small letters",
+    "ANN": "a jagged starburst announcement balloon, thin black ink outline",
+    "THINK": "a smooth oval thought balloon with small circles instead of a tail",
+    "DREAM": "a scalloped cloud thought balloon with small circles, daydream",
+    "CAP_B": "a rectangular caption box along the bottom edge, cream fill, thin black ink outline",
+    "CAP_T": "a rectangular caption box along the top edge, cream fill, thin black ink outline",
+    "DARK": "a black-filled oval balloon, white letters, negative emotion",
+}
+LETTER_ALIASES = {
+    "CAP": "CAP_B",
+    "WHISPER": "WHISP",
+    "YELLING": "YELL",
+    "THINKING": "THINK",
+}
+LETTER_TAG_CODES = frozenset({*LETTER_SHAPES, *LETTER_ALIASES})
+_TAG_CODES = sorted(LETTER_TAG_CODES, key=len, reverse=True)
+_TAG_LINE = re.compile(
+    r"^(" + "|".join(re.escape(c) for c in _TAG_CODES) + r")(?:_([1-6]))?\s*:\s*(.*)$",
+    re.I,
+)
+_TAG_CELL = re.compile(
+    r"^(" + "|".join(re.escape(c) for c in _TAG_CODES) + r")_([1-6])$",
+    re.I,
+)
+_SPEAKER_PREFIX = re.compile(
+    r"^((?:CHARACTER|PILOT)\d+|[A-Za-z][A-Za-z0-9_]*)\s*:\s*(.+)$",
+    re.I,
+)
+LETTERING_CLOSER = (
+    "Hand-lettered readable ink in the balloons and caption boxes on the plate. "
+    "Quoted words are exact. Do not garble, misspell, translate, or replace them. "
+    "No extra balloons. Do not grow the canvas. No caption bar under the image."
+)
+LETTER_CELLS = {
+    1: "top-left sixth of the plate",
+    2: "top-right sixth of the plate",
+    3: "middle-left sixth of the plate",
+    4: "middle-right sixth of the plate",
+    5: "bottom-left sixth of the plate",
+    6: "bottom-right sixth of the plate",
+}
 
 
 def pad_slug(slug: str, width: int = SLUG_PAD) -> str:
@@ -86,8 +142,11 @@ class Plate:
     pane_left_ids: list[str] = field(default_factory=list)
     pane_right_ids: list[str] = field(default_factory=list)
     named_ids: list[str] | None = None
-    use_text: bool = True
+    use_text: bool = False
     use_image: bool = False
+    use_letter: bool = False
+    lettering_prompt: str = ""
+    caption_bar: str = ""
 
 
 @dataclass
@@ -96,8 +155,17 @@ class ParseResult:
     warnings: list[str]
 
 
+def _is_letter_tag_token(token: str) -> bool:
+    t = (token or "").upper()
+    if t in LETTER_TAG_CODES:
+        return True
+    return bool(_TAG_CELL.match(t))
+
+
 def _looks_like_slug(token: str, character_names: set[str]) -> bool:
     if token in character_names:
+        return False
+    if _is_letter_tag_token(token):
         return False
     if _SLUG_PREF.match(token) or re.match(r"^t\d+_[A-Za-z0-9_]+$", token):
         return True
@@ -114,6 +182,8 @@ def _split_slug_line(line: str, character_names: set[str]) -> tuple[str, str] | 
     if m:
         token, rest = m.group(1).strip(), m.group(2).strip()
         if token in character_names:
+            return None
+        if _is_letter_tag_token(token):
             return None
         if _SLUG_ANY.match(token) or _SLUG_PREF.match(token):
             return token, rest
@@ -160,6 +230,8 @@ def expand_character_decls(body: str, by_name: dict[str, Character]) -> str:
         if not name:
             return ""
         lock = (by_name[name].lock_text or "").strip().rstrip(".,; ")
+        if not lock:
+            return m.group(0)
         return lock
 
     return _CHAR_TOKEN.sub(repl, body or "")
@@ -288,37 +360,171 @@ def parse_captions(text: str, character_names: list[str]) -> dict[str, str]:
     return caps
 
 
+def _cast_slot_name(token: str, characters: list[Character]) -> str | None:
+    raw = (token or "").strip()
+    if not raw:
+        return None
+    m = re.match(r"(?i)^(?:CHARACTER|PILOT)(\d+)$", raw)
+    if m:
+        idx = int(m.group(1)) - 1
+        if 0 <= idx < len(characters):
+            return characters[idx].name
+        return None
+    names = [c.name for c in characters]
+    for n in names:
+        if n.lower() == raw.lower():
+            return n
+    return None
+
+
+def _expand_cast_in_lettering(text: str, characters: list[Character]) -> str:
+    def repl(m: re.Match[str]) -> str:
+        idx = int(m.group(1)) - 1
+        if 0 <= idx < len(characters):
+            return characters[idx].name
+        return m.group(0)
+
+    return _CHAR_TOKEN.sub(repl, text or "")
+
+
+def _quote_lettering(text: str) -> str:
+    return (text or "").replace('"', "'").strip()
+
+
+def _ns2_parts(text: str) -> tuple[str, str] | None:
+    for sep in (" | ", " |", "| ", "|", " // ", "//"):
+        if sep in text:
+            a, b = text.split(sep, 1)
+            if a.strip() and b.strip():
+                return a.strip(), b.strip()
+    bits = re.split(r"\s*(?:\.{3}|…)\s*", text, maxsplit=1)
+    if len(bits) == 2 and bits[0].strip() and bits[1].strip():
+        return bits[0].strip().rstrip(".") + "…", "…" + bits[1].strip()
+    return None
+
+
+@dataclass
+class LetterBeat:
+    tag: str
+    text: str
+    speaker: str = ""
+    part2: str = ""
+    slot: int = 0
+    cell: int = 0
+
+
+def parse_caption_lettering(
+    caption: str,
+    characters: list[Character] | None = None,
+) -> tuple[list[LetterBeat], str]:
+    """Caption wall → model beats. Untagged narrator lines become a bottom box (CAP_B)."""
+    characters = characters or []
+    beats: list[LetterBeat] = []
+    bar: list[str] = []
+    for raw in (caption or "").splitlines():
+        line = raw.strip()
+        if not line:
+            if bar and bar[-1] != "":
+                bar.append("")
+            continue
+        m = _TAG_LINE.match(line)
+        if not m:
+            bar.append(raw.rstrip())
+            continue
+        tag = LETTER_ALIASES.get(m.group(1).upper(), m.group(1).upper())
+        cell = int(m.group(2)) if m.group(2) else 0
+        if tag in {"CAP_B", "CAP_T"}:
+            cell = 0
+        rest = (m.group(3) or "").strip()
+        speaker = ""
+        slot = 0
+        sm = _SPEAKER_PREFIX.match(rest)
+        if sm and tag not in {"CAP_B", "CAP_T"}:
+            maybe = _cast_slot_name(sm.group(1), characters)
+            if maybe or re.match(r"(?i)^(?:CHARACTER|PILOT)\d+$", sm.group(1) or ""):
+                speaker = maybe or sm.group(1)
+                rest = (sm.group(2) or "").strip()
+                mslot = re.match(r"(?i)^(?:CHARACTER|PILOT)(\d+)$", sm.group(1) or "")
+                if mslot:
+                    slot = int(mslot.group(1))
+                elif maybe:
+                    for i, c in enumerate(characters, start=1):
+                        if c.name.lower() == maybe.lower():
+                            slot = i
+                            break
+        rest = _expand_cast_in_lettering(rest, characters)
+        speaker = _expand_cast_in_lettering(speaker, characters)
+        part2 = ""
+        if tag == "NS2":
+            parts = _ns2_parts(rest)
+            if parts:
+                rest, part2 = parts
+        if not rest:
+            continue
+        beats.append(
+            LetterBeat(tag=tag, text=rest, speaker=speaker, part2=part2, slot=slot, cell=cell)
+        )
+    while bar and bar[0] == "":
+        bar.pop(0)
+    while bar and bar[-1] == "":
+        bar.pop()
+    bar_text = "\n".join(bar)
+    if bar_text.strip() and not any(b.tag in {"CAP_B", "CAP_T"} for b in beats):
+        joined = " ".join(ln.strip() for ln in bar_text.splitlines() if ln.strip())
+        beats.insert(0, LetterBeat(tag="CAP_B", text=joined))
+    return beats, bar_text
+
+
+def render_lettering(beats: list[LetterBeat]) -> str:
+    out: list[str] = []
+    for b in beats:
+        shape = LETTER_SHAPES.get(b.tag) or LETTER_SHAPES["NS"]
+        q1 = _quote_lettering(b.text)
+        if b.tag == "NS2" and b.part2:
+            q2 = _quote_lettering(b.part2)
+            clause = (
+                f"Draw {shape}. First balloon exactly: \"{q1}\". "
+                f"Second balloon exactly: \"{q2}\"."
+            )
+        else:
+            clause = f"Draw {shape}. Hand-lettered ink inside, exactly: \"{q1}\"."
+        if b.speaker and b.tag not in {"CAP_B", "CAP_T"}:
+            if b.tag == "OFFP":
+                clause += f" The voice is {b.speaker}, off-panel."
+            else:
+                clause += f" The tail points at {b.speaker}."
+        if b.cell in LETTER_CELLS and b.tag not in {"CAP_B", "CAP_T"}:
+            clause += f" Place it in the {LETTER_CELLS[b.cell]}."
+        out.append(clause)
+    return " ".join(out)
+
+
+def layout_allow_lettering(text: str) -> str:
+    out = _NO_LETTER_LAYOUT.sub("", text or "")
+    return re.sub(r"\s{2,}", " ", out).strip(" ,")
+
+
+def tail_allow_lettering(text: str) -> str:
+    return _NO_TEXT_TAIL.sub("", text or "").strip()
+
+
+def combine_lettering(left: str, right: str = "") -> str:
+    bits: list[str] = []
+    if left and right:
+        bits.append("Left pane lettering. " + left.strip())
+        bits.append("Right pane lettering. " + right.strip())
+        return " ".join(bits)
+    return (left or right or "").strip()
+
+
 def _spacecraft(text: str) -> str:
     """ship / spaceship / starship → spacecraft. Does not touch spacesuit."""
     return _VESSEL.sub("spacecraft", text or "")
 
 
-def _cutout_clause(cutout: bool, cutout_text: str = "") -> str:
-    if not cutout:
-        return ""
-    return (cutout_text or REF_CUTOUT).strip()
-
-
-def _ref_hint(n: int, cutout: bool) -> str:
-    if cutout:
-        return (
-            f"Use image{n} as reference for how this subject looks, background removed. "
-            "Do not copy its pose, seat, window, room, or composition."
-        )
-    return (
-        f"Use image{n} as reference for how this subject looks. "
-        "Do not copy its pose, seat, window, room, or composition."
-    )
-
-
-def _close(text: str, tail: str) -> str:
-    tail = tail if tail.startswith(" ") or tail == "" else " " + tail
-    text = text.rstrip(".,; ") + "."
-    if tail.strip():
-        t = tail.strip()
-        if not text.endswith(t):
-            text = text.rstrip() + (tail if tail.startswith(" ") else " " + tail)
-    return text
+def _image_slots(text: str) -> str:
+    """picture1 → image1 so Qwen binds the still that was uploaded."""
+    return re.sub(r"\bpicture(\d+)\b", r"image\1", text or "", flags=re.I)
 
 
 def _clause(s: str) -> str:
@@ -346,26 +552,32 @@ def assemble(
     cutout_text: str = "",
     layout: str = "one",
     layout_text: str = "",
-    keep_names: list[str] | None = None,
+    lettering: str = "",
 ) -> str:
-    """Ink + layout + closer + lock-if-no-still + KEEP lines + Book wall.
-
-    Stills off (n_pictures=0): paste Cast lock unless the wall already inlined it.
-    Stills on: KEEP imageN lines; CHARACTERn lock is already in the wall if declared.
-    """
+    """Ink + layout + closer + lock-if-no-still + Book wall."""
     style = style.strip()
     scene = _spacecraft(scene.strip().rstrip(".,; "))
     lt = (layout_text or LAYOUT_ONE).strip()
+    closer = (tail or "").strip()
+    lettering = (lettering or "").strip()
+    if lettering:
+        lt = layout_allow_lettering(lt)
+        closer = tail_allow_lettering(closer)
     bits: list[str] = [style]
     if lt and (layout or "one") != "split":
         bits.append(lt)
-    if (tail or "").strip():
-        bits.append(tail.strip())
+    if closer:
+        bits.append(closer)
     if not n_pictures:
         bits.extend(_lock_bits(locks))
+    if n_pictures and cutout:
+        bits.extend(_lock_bits([cutout_text]))
     if scene:
         bits.append(scene)
-    return _join_clauses(*bits)
+    core = _join_clauses(*bits)
+    if not lettering:
+        return core
+    return f"{core} {LETTERING_CLOSER} {lettering}".strip()
 
 
 def extract_inline_panes(scene: str) -> tuple[str, str] | None:
@@ -377,6 +589,30 @@ def extract_inline_panes(scene: str) -> tuple[str, str] | None:
     if left and right:
         return left, right
     return None
+
+
+def locks_for_scene(
+    ids: list[str] | None,
+    by_name: dict[str, Character],
+    scene: str,
+    use_text: bool = True,
+) -> list[str]:
+    """Cast locks for a scene. Skip a lock already written into the wall (CHARACTER1)."""
+    if not use_text:
+        return []
+    scene = scene or ""
+    out: list[str] = []
+    for name in ids or []:
+        c = by_name.get(name)
+        if not c:
+            continue
+        raw = (c.lock_text or "").strip()
+        if not raw:
+            continue
+        if raw.rstrip(".,; ") in scene:
+            continue
+        out.append(c.lock_text)
+    return out
 
 
 def _pane_block(label: str, scene: str, locks: list[str], ref_n: int, cutout: bool) -> str:
@@ -402,23 +638,34 @@ def assemble_pair(
     n_right_refs: int = 0,
     cutout: bool = False,
     cutout_text: str = "",
+    lettering: str = "",
 ) -> str:
     """Two different scenes: left pane, right pane. Lock in a pane only if that pane has no still."""
     style = style.strip()
     lt = (layout_text or LAYOUT_SPLIT).strip()
+    closer = (tail or "").strip()
+    lettering = (lettering or "").strip()
+    if lettering:
+        lt = layout_allow_lettering(lt)
+        closer = tail_allow_lettering(closer)
     bits: list[str] = [style]
     if lt:
         bits.append(lt)
-    if (tail or "").strip():
-        bits.append(tail.strip())
+    if closer:
+        bits.append(closer)
     bits.append(_pane_block("Left pane", left_scene, left_locks, 1 if n_left_refs else 0, cutout))
     right_ref = (2 if n_left_refs else 1) if n_right_refs else 0
     bits.append(_pane_block("Right pane", right_scene, right_locks, right_ref, cutout))
+    if (n_left_refs or n_right_refs) and cutout:
+        bits.extend(_lock_bits([cutout_text]))
     bits.append(
         "The left pane and the right pane are two different scenes, two different poses. "
         "Do not mirror. Do not copy the left place or action into the right pane."
     )
-    return _join_clauses(*bits)
+    core = _join_clauses(*bits)
+    if not lettering:
+        return core
+    return f"{core} {LETTERING_CLOSER} {lettering}".strip()
 
 
 def apply_split_pairs(
@@ -437,7 +684,6 @@ def apply_split_pairs(
     i = 0
     while i < len(plates):
         a = plates[i]
-        locks_a = [by_name[n].lock_text for n in a.character_ids if n in by_name]
         inline = (a.pane_left and a.pane_right) or extract_inline_panes(a.scene_text)
         if inline:
             if a.pane_left and a.pane_right:
@@ -446,8 +692,11 @@ def apply_split_pairs(
             else:
                 ls, rs = extract_inline_panes(a.scene_text) or ("", "")
                 ids_l, ids_r = a.character_ids, a.character_ids
-            locks_l = [by_name[n].lock_text for n in ids_l if n in by_name]
-            locks_r = [by_name[n].lock_text for n in ids_r if n in by_name]
+            locks_l = locks_for_scene(ids_l, by_name, ls, a.use_text)
+            locks_r = locks_for_scene(ids_r, by_name, rs, a.use_text)
+            pane_cutout = cutout or any(
+                bool(getattr(by_name.get(n), "ref_cutout", False)) for n in (ids_l or []) + (ids_r or [])
+            )
             text = assemble_pair(
                 style,
                 locks_l,
@@ -458,8 +707,9 @@ def apply_split_pairs(
                 layout_text=layout_text,
                 n_left_refs=n_pictures_for.get(a.slug, 0),
                 n_right_refs=n_pictures_for.get(a.slug, 0),
-                cutout=cutout,
+                cutout=pane_cutout,
                 cutout_text=cutout_text,
+                lettering=a.lettering_prompt if a.use_letter else "",
             )
             a.assembled = text
             a.pane, a.pair_with = "inline", a.slug
@@ -475,7 +725,12 @@ def apply_split_pairs(
             i += 1
             continue
         b = plates[i + 1]
-        locks_b = [by_name[n].lock_text for n in b.character_ids if n in by_name]
+        locks_a = locks_for_scene(a.character_ids, by_name, a.scene_text, a.use_text)
+        locks_b = locks_for_scene(b.character_ids, by_name, b.scene_text, b.use_text)
+        pair_cutout = cutout or any(
+            bool(getattr(by_name.get(n), "ref_cutout", False))
+            for n in list(a.character_ids or []) + list(b.character_ids or [])
+        )
         text = assemble_pair(
             style,
             locks_a,
@@ -486,8 +741,12 @@ def apply_split_pairs(
             layout_text=layout_text,
             n_left_refs=n_pictures_for.get(a.slug, 0),
             n_right_refs=n_pictures_for.get(b.slug, 0),
-            cutout=cutout,
+            cutout=pair_cutout,
             cutout_text=cutout_text,
+            lettering=combine_lettering(
+                a.lettering_prompt if a.use_letter else "",
+                b.lettering_prompt if b.use_letter else "",
+            ),
         )
         a.assembled = text
         b.assembled = text
@@ -507,18 +766,17 @@ def parse_book(
     cutout_text: str = "",
     layout: str = "one",
     layout_text: str = "",
-    keep_names_for: dict[str, list[str]] | None = None,
     use_text_for: dict[str, bool] | None = None,
     use_image_for: dict[str, bool] | None = None,
+    use_letter_for: dict[str, bool] | None = None,
 ) -> ParseResult:
     names = [c.name for c in characters]
     name_set = set(names)
-    default_id = names[0] if names else None
     by_name = {c.name: c for c in characters}
     n_pictures_for = n_pictures_for or {}
-    keep_names_for = keep_names_for or {}
     use_text_for = use_text_for or {}
     use_image_for = use_image_for or {}
+    use_letter_for = use_letter_for or {}
     warnings: list[str] = []
 
     prompt_items = parse_wall(prompts_raw, names)
@@ -533,29 +791,21 @@ def parse_book(
     for i, (slug, raw_body) in enumerate(prompt_items, start=1):
         pw: list[str] = []
         body = _strip_style_tail(raw_body, style, tail, pw, slug)
-        use_text = _slug_flag(use_text_for, slug, True)
+        use_text = _slug_flag(use_text_for, slug, False)
         use_image = _slug_flag(use_image_for, slug, False)
+        use_letter = _slug_flag(use_letter_for, slug, False)
         decls = parse_character_decls(body, names)
         if decls:
             hits = [n for _, n in decls] if (use_text or use_image) else []
             named = list(hits)
             if use_text:
                 body = expand_character_decls(body, by_name)
-            elif use_image:
-                body = character_tokens_to_images(body)
-            else:
-                body = _CHAR_TOKEN.sub("", body)
             scene = body
-            locks_for_assemble: list[str] = []
+            locks_for_assemble = []
         elif use_text:
             hits = _character_hits(slug + " " + body, names)
             named = list(hits)
             scene = _strip_character_tokens(body, name_set)
-            if not hits and default_id:
-                hits = [default_id]
-                pw.append(
-                    f"{slug}: no character token — used {default_id} lock, stills not attached"
-                )
             locks_for_assemble = [by_name[n].lock_text for n in hits if n in by_name]
         else:
             hits = []
@@ -563,7 +813,28 @@ def parse_book(
             scene = body
             locks_for_assemble = []
         scene = re.sub(r"\s+", " ", scene).strip()
-        scene = _spacecraft(scene)
+        scene = _image_slots(_spacecraft(scene))
+        if re.search(r"\bKEEP\b", scene, re.I):
+            scene = re.sub(r"\s*for costume only\b", "", scene, flags=re.I)
+        if use_image and not named:
+            nums = [int(x) for x in re.findall(r"\b(?:image|picture)(\d+)\b", scene, re.I)]
+            n_slots = max(nums) if nums else 1
+            named = [
+                c.name for c in characters if c.name and (c.ref_images or c.ref_active)
+            ][: max(1, n_slots)]
+            hits = list(named)
+            if named:
+                pw.append(
+                    f"{slug}: Image on, no PILOT1 in the wall — {', '.join(named)} → image1"
+                )
+            else:
+                pw.append(f"{slug}: Image is on but no still on Cast")
+        if re.search(r"\b(?:image|picture)\d+\b", raw_body, re.I) and not use_image:
+            pw.append(f"{slug}: wall names image1/picture1 but Image is off — no still is sent")
+        if re.search(r"costume only", raw_body, re.I) and "KEEP" not in (raw_body or "").upper():
+            pw.append(
+                f"{slug}: 'costume only' tells Krea to drop face and body from the still"
+            )
         pane_left = pane_right = ""
         pane_left_ids: list[str] = []
         pane_right_ids: list[str] = []
@@ -571,19 +842,24 @@ def parse_book(
             pre = re.split(r"left\s*pane", body, maxsplit=1, flags=re.I)[0]
             pane_left_ids = _character_hits(pre + " " + raw_panes[0], names)
             pane_right_ids = _character_hits(raw_panes[1], names)
-            pane_left = _spacecraft(
-                re.sub(r"\s+", " ", _strip_character_tokens(raw_panes[0], name_set)).strip()
+            pane_left = _image_slots(
+                _spacecraft(
+                    re.sub(r"\s+", " ", _strip_character_tokens(raw_panes[0], name_set)).strip()
+                )
             )
-            pane_right = _spacecraft(
-                re.sub(r"\s+", " ", _strip_character_tokens(raw_panes[1], name_set)).strip()
+            pane_right = _image_slots(
+                _spacecraft(
+                    re.sub(r"\s+", " ", _strip_character_tokens(raw_panes[1], name_set)).strip()
+                )
             )
         risky = len(hits) >= 2
         if risky:
             pw.append(f"{slug}: two-shot — faces fuse")
         metaphor = detect_metaphor(scene)
         caption = caption_for(slug, caps)
+        beats, caption_bar = parse_caption_lettering(caption, characters)
+        lettering_prompt = render_lettering(beats)
         n_pic = n_pictures_for.get(slug, 0) if use_image else 0
-        keep = keep_names_for.get(slug) if use_image else None
         plate_cutout = any(
             bool(getattr(by_name.get(n), "ref_cutout", False)) for n in (named or [])
         )
@@ -597,7 +873,7 @@ def parse_book(
             cutout_text=cutout_text,
             layout="one",
             layout_text=layout_text or LAYOUT_ONE,
-            keep_names=keep or None,
+            lettering=lettering_prompt if use_letter else "",
         )
         plates.append(
             Plate(
@@ -618,6 +894,9 @@ def parse_book(
                 named_ids=named,
                 use_text=use_text,
                 use_image=use_image,
+                use_letter=use_letter,
+                lettering_prompt=lettering_prompt,
+                caption_bar=caption_bar,
             )
         )
         warnings.extend(pw)

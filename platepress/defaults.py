@@ -75,6 +75,13 @@ def neg_for(layout: str) -> str:
     return f"{NEG_ALWAYS}, {extra}"
 
 
+def neg_allow_lettering(neg: str) -> str:
+    """Drop the no-text ban so balloons and caption boxes can letter."""
+    drop = {"text", "letters", "letter"}
+    parts = [p.strip() for p in (neg or "").split(",") if p.strip()]
+    return ", ".join(p for p in parts if p.lower() not in drop)
+
+
 NEG = neg_for("one")
 
 EXAMPLES = {

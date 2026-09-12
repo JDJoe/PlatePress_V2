@@ -19,14 +19,17 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .comfy_client import ComfyClient, ComfyError
-from .defaults import EXAMPLES
+from .defaults import EXAMPLES, neg_allow_lettering
 from .demo import BOS_CAPTIONS, BOS_PROMPTS, DEMO_CAST, T1_CAPTIONS, T1_PROMPTS
-from .lettering import attach
+from .lettering import letter_plate
 from .parser import (
     Character,
     assemble,
     assemble_pair,
+    combine_lettering,
     extract_inline_panes,
+    parse_caption_lettering,
+    locks_for_scene,
     pad_slug,
     parse_book,
     same_slug,
@@ -63,6 +66,7 @@ LLM_SHEET = (PKG / "llm_sheet.txt").read_text(encoding="utf-8")
 
 _job_q: list[dict[str, Any]] = []
 _q_lock = threading.Lock()
+_active_jobs = 0
 _worker_started = False
 _pause = threading.Event()
 _pause.set()
@@ -192,9 +196,13 @@ def _ref_pairs(plate, chars: list[Character], names: list[str] | None = None) ->
     if names is not None:
         ids = names
     elif getattr(plate, "named_ids", None) is not None:
-        ids = plate.named_ids
+        ids = list(plate.named_ids or [])
+        if not ids and getattr(plate, "use_image", False):
+            ids = [c.name for c in chars if c.name and _still_path(c)]
+    elif getattr(plate, "use_image", False):
+        ids = [c.name for c in chars if c.name and _still_path(c)]
     else:
-        ids = plate.character_ids
+        ids = list(plate.character_ids or [])
     pairs: list[tuple[str, Path]] = []
     for name in ids or []:
         c = by.get(name)
@@ -210,48 +218,52 @@ def _refs_for(plate, chars: list[Character], names: list[str] | None = None) -> 
     return [path for _, path in _ref_pairs(plate, chars, names)]
 
 
-def _done_slugs(d: Path) -> set[str]:
-    found: set[str] = set()
+def _plate_slug_key(name: str) -> tuple[str, ...]:
+    found = _slugs_in_name(name)
+    if found:
+        return tuple(pad_slug(s) for s in found)
+    return (pad_slug(_plate_slug(name)),)
+
+
+def _done_slug_keys(d: Path) -> set[tuple[str, ...]]:
+    found: set[tuple[str, ...]] = set()
     plates = d / "plates"
     if not plates.exists():
         return found
     for p in plates.iterdir():
         if p.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp"}:
             continue
-        found.add(p.stem)
-        slug = _plate_slug(p.name)
-        found.add(slug)
-        found.add(pad_slug(slug))
-        parts = p.stem.rsplit("_", 1)
-        if parts:
-            found.add(parts[0])
+        found.add(_plate_slug_key(p.name))
     return found
 
 
-def _slug_opt_maps(book: dict[str, Any], extra: dict[str, Any] | None = None) -> tuple[dict[str, bool], dict[str, bool]]:
+def _slug_opt_maps(
+    book: dict[str, Any], extra: dict[str, Any] | None = None
+) -> tuple[dict[str, bool], dict[str, bool], dict[str, bool]]:
     raw = dict(book.get("slug_opts") or {})
     if extra:
         raw.update(extra)
     text: dict[str, bool] = {}
     image: dict[str, bool] = {}
+    letter: dict[str, bool] = {}
     for key, val in raw.items():
         if not isinstance(val, dict):
             continue
-        text[str(key)] = bool(val.get("use_text", True))
+        text[str(key)] = bool(val.get("use_text", False))
         image[str(key)] = bool(val.get("use_image", False))
-    return text, image
+        letter[str(key)] = bool(val.get("use_letter", False))
+    return text, image, letter
 
 
 def _parse(
     book: dict[str, Any],
     s: dict[str, Any],
     picture_counts: dict[str, int] | None = None,
-    keep_names_for: dict[str, list[str]] | None = None,
 ):
     chars = _chars(book)
     style = book.get("style") or s["style"]
     tail = book.get("tail") or s.get("tail") or ""
-    use_text_for, use_image_for = _slug_opt_maps(book)
+    use_text_for, use_image_for, use_letter_for = _slug_opt_maps(book)
     return parse_book(
         book.get("prompts_raw") or "",
         book.get("captions_raw") or "",
@@ -263,9 +275,9 @@ def _parse(
         cutout_text=str(book.get("ref_cutout_text") or s.get("ref_cutout_text") or ""),
         layout=s.get("layout") or "one",
         layout_text=s.get("layout_text") or "",
-        keep_names_for=keep_names_for,
         use_text_for=use_text_for,
         use_image_for=use_image_for,
+        use_letter_for=use_letter_for,
     )
 
 
@@ -278,11 +290,19 @@ def _start_worker() -> None:
     _worker_started = True
 
 
+def _queue_depth() -> int:
+    with _q_lock:
+        return len(_job_q) + _active_jobs
+
+
 def _worker_loop() -> None:
+    global _active_jobs
     while True:
         _pause.wait()
         with _q_lock:
             job = _job_q.pop(0) if _job_q else None
+            if job is not None:
+                _active_jobs += 1
         if job is None:
             threading.Event().wait(0.25)
             continue
@@ -290,6 +310,9 @@ def _worker_loop() -> None:
             _run_job(job)
         except Exception as e:
             _fail_job(job, str(e), traceback.format_exc())
+        finally:
+            with _q_lock:
+                _active_jobs = max(0, _active_jobs - 1)
 
 
 def _fail_job(job: dict[str, Any], err: str, tb: str = "") -> None:
@@ -400,8 +423,7 @@ def _enqueue(jobs: list[dict[str, Any]]) -> int:
     _start_worker()
     with _q_lock:
         _job_q.extend(jobs)
-        n = len(_job_q)
-    return n
+    return _queue_depth()
 
 
 def _assert_unique_names(chars: list[dict[str, Any]]) -> None:
@@ -419,11 +441,11 @@ def _assert_unique_names(chars: list[dict[str, Any]]) -> None:
 
 
 def _next_token(chars: list[dict[str, Any]]) -> str:
-    names = {(c.get("name") or "") for c in chars}
+    names = {(c.get("name") or "").strip().upper() for c in chars}
     i = 1
     while True:
-        n = "CHAR" if i == 1 else f"CHAR_{i}"
-        if n not in names:
+        n = f"CHARACTER{i}"
+        if n.upper() not in names:
             return n
         i += 1
 
@@ -576,15 +598,12 @@ def post_parse(body: dict[str, Any] | None = Body(default=None)) -> dict[str, An
     picture_counts: dict[str, int] = {}
     result = _parse(book, s)
     ref_path = Path(s.get("workflow_ref") or "")
-    keep_for: dict[str, list[str]] = {}
-    _, use_image_for = _slug_opt_maps(book)
+    _, use_image_for, _ = _slug_opt_maps(book)
     for p in result.plates:
         want_img = bool(getattr(p, "use_image", False)) or bool(use_image_for.get(p.slug))
         pairs = _ref_pairs(p, chars) if (want_img and ref_path.exists()) else []
         picture_counts[p.slug] = len(pairs)
-        if pairs:
-            keep_for[p.slug] = [name for name, _ in pairs]
-    result = _parse(book, s, picture_counts, keep_for)
+    result = _parse(book, s, picture_counts)
     book["plates"] = [
         {
             "slug": p.slug,
@@ -594,13 +613,16 @@ def post_parse(body: dict[str, Any] | None = Body(default=None)) -> dict[str, An
             "metaphor": p.metaphor,
             "helmet_on": p.helmet_on,
             "caption": p.caption,
+            "caption_bar": getattr(p, "caption_bar", "") or "",
+            "lettering_prompt": getattr(p, "lettering_prompt", "") or "",
             "risky_twoshot": p.risky_twoshot,
             "assembled": p.assembled,
             "warnings": p.warnings,
             "pane": p.pane,
             "pair_with": p.pair_with,
-            "use_text": bool(getattr(p, "use_text", True)),
+            "use_text": bool(getattr(p, "use_text", False)),
             "use_image": bool(getattr(p, "use_image", False)),
+            "use_letter": bool(getattr(p, "use_letter", False)),
         }
         for p in result.plates
     ]
@@ -608,8 +630,9 @@ def post_parse(body: dict[str, Any] | None = Body(default=None)) -> dict[str, An
     for p in result.plates:
         prev = opts.get(p.slug) if isinstance(opts.get(p.slug), dict) else {}
         opts[p.slug] = {
-            "use_text": bool(prev.get("use_text", getattr(p, "use_text", True))),
+            "use_text": bool(prev.get("use_text", getattr(p, "use_text", False))),
             "use_image": bool(prev.get("use_image", getattr(p, "use_image", False))),
+            "use_letter": bool(prev.get("use_letter", getattr(p, "use_letter", False))),
         }
     book["slug_opts"] = opts
     save_book(s, book)
@@ -684,7 +707,7 @@ def post_generate(body: dict[str, Any]) -> dict[str, Any]:
     renamed = normalize_plate_filenames(d, book_id)
     if _patch_run_output_paths(book, renamed):
         save_book(s, book)
-    done_files = _done_slugs(d)
+    done_keys = _done_slug_keys(d)
     run_no = _next_run(d / "plates", book_id)
     want = [
         p
@@ -719,7 +742,7 @@ def post_generate(body: dict[str, Any]) -> dict[str, Any]:
     skipped = 0
     by = {c.name: c for c in chars}
     ref_note = _ref_notice(s, chars)
-    _, use_image_for = _slug_opt_maps(book)
+    _, use_image_for, _ = _slug_opt_maps(book)
     notice = " ".join(x for x in (notice, ref_note) if x).strip()
     batch_id = new_id("b")
     batch_at = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -755,22 +778,23 @@ def post_generate(body: dict[str, Any]) -> dict[str, Any]:
                 ids_r = list(left.pane_right_ids or [])
                 lock_ids_l = ids_l or list(left.character_ids or [])
                 lock_ids_r = ids_r
-                locks_l = [by[n].lock_text for n in lock_ids_l if n in by]
-                locks_r = [by[n].lock_text for n in lock_ids_r if n in by]
                 left_scene, right_scene = ls, rs
+                locks_l = locks_for_scene(lock_ids_l, by, left_scene, getattr(left, "use_text", False))
+                locks_r = locks_for_scene(lock_ids_r, by, right_scene, getattr(left, "use_text", False))
                 send_l = bool(getattr(left, "use_image", False))
                 send_r = bool(getattr(left, "use_image", False))
                 refs_l = _refs_for(left, chars, ids_l) if (send_l and ref_wf.exists()) else []
                 refs_r = _refs_for(left, chars, ids_r) if (send_r and ref_wf.exists() and ids_r) else []
+                done_key = (pad_slug(left.slug),)
             else:
                 combo = f"{pad_slug(left.slug)}_{pad_slug(right.slug)}"
                 refs_l = _refs_for(left, chars) if (getattr(left, "use_image", False) and ref_wf.exists()) else []
                 refs_r = _refs_for(right, chars) if (getattr(right, "use_image", False) and ref_wf.exists()) else []
-                locks_l = [by[n].lock_text for n in left.character_ids if n in by]
-                locks_r = [by[n].lock_text for n in right.character_ids if n in by]
                 left_scene, right_scene = left.scene_text, right.scene_text
-            existing = [n for n in done_files if combo in n]
-            if skip_done and existing:
+                locks_l = locks_for_scene(left.character_ids, by, left_scene, getattr(left, "use_text", False))
+                locks_r = locks_for_scene(right.character_ids, by, right_scene, getattr(right, "use_text", False))
+                done_key = (pad_slug(left.slug), pad_slug(right.slug))
+            if skip_done and done_key in done_keys:
                 skipped += 1
                 continue
             refs = (refs_l[:1] + refs_r[:1])[:3]
@@ -789,20 +813,29 @@ def post_generate(body: dict[str, Any]) -> dict[str, Any]:
                     for n in (ids_l + ids_r if inline else list(left.character_ids or []) + list(right.character_ids or []))
                 ),
                 cutout_text=str(book.get("ref_cutout_text") or s.get("ref_cutout_text") or ""),
+                lettering=combine_lettering(
+                    (getattr(left, "lettering_prompt", "") or "")
+                    if getattr(left, "use_letter", False)
+                    else "",
+                    ""
+                    if inline
+                    else (
+                        (getattr(right, "lettering_prompt", "") or "")
+                        if getattr(right, "use_letter", False)
+                        else ""
+                    ),
+                ),
             )
             job_slug = combo
             seed_from = left
         else:
             p = left
-            existing = [n for n in done_files if pad_slug(p.slug) in n or p.slug in n]
-            if skip_done and existing:
+            if skip_done and (pad_slug(p.slug),) in done_keys:
                 skipped += 1
                 continue
             pairs = _ref_pairs(p, chars) if (getattr(p, "use_image", False) and ref_wf.exists()) else []
             refs = [path for _, path in pairs]
-            locks = [by[n].lock_text for n in p.character_ids if n in by]
-            if p.named_ids:
-                locks = []
+            locks = locks_for_scene(p.character_ids, by, p.scene_text, getattr(p, "use_text", False))
             assembled = assemble(
                 book.get("style") or s["style"],
                 locks,
@@ -815,8 +848,10 @@ def post_generate(body: dict[str, Any]) -> dict[str, Any]:
                 ),
                 cutout_text=str(book.get("ref_cutout_text") or s.get("ref_cutout_text") or ""),
                 layout=s.get("layout") or "one",
-                keep_names=[name for name, _ in pairs] or None,
                 layout_text=s.get("layout_text") or "",
+                lettering=(getattr(p, "lettering_prompt", "") or "")
+                if getattr(p, "use_letter", False)
+                else "",
             )
             job_slug = p.slug
             seed_from = p
@@ -838,6 +873,9 @@ def post_generate(body: dict[str, Any]) -> dict[str, Any]:
             seeds.append(locked)
         while len(seeds) < per:
             seeds.append(random.randint(0, 2**53 - 1))
+        job_neg = s["neg"]
+        if "Hand-lettered readable ink" in (assembled or ""):
+            job_neg = neg_allow_lettering(job_neg)
         for seed in seeds:
             prefix = f"PP_{book_id}_v{run_no:02d}_{pad_slug(job_slug) if right is None else job_slug}"
             jobs.append(
@@ -847,7 +885,7 @@ def post_generate(body: dict[str, Any]) -> dict[str, Any]:
                     "seed": seed,
                     "run": run_no,
                     "assembled": assembled,
-                    "negative": s["neg"],
+                    "negative": job_neg,
                     "prefix": prefix,
                     "workflow": wf,
                     "ref_paths": [str(x) for x in refs],
@@ -861,7 +899,7 @@ def post_generate(body: dict[str, Any]) -> dict[str, Any]:
                     "plate_slug": job_slug,
                     "seed": seed,
                     "positive_prompt": assembled,
-                    "negative_prompt": s["neg"],
+                    "negative_prompt": job_neg,
                     "output_path": None,
                     "status": "queued",
                     "batch_id": batch_id,
@@ -1156,36 +1194,66 @@ def _group_thumbs(thumbs: list[dict[str, Any]], runs: list[dict[str, Any]]) -> l
     return batches
 
 
+def _attach_run_meta(thumbs: list[dict[str, Any]], runs: list[dict[str, Any]]) -> None:
+    """Put seed back on thumbs. File names no longer carry it."""
+    by_path: dict[str, dict[str, Any]] = {}
+    by_name: dict[str, dict[str, Any]] = {}
+    for run in runs or []:
+        op = str(run.get("output_path") or "")
+        if not op or run.get("seed") is None:
+            continue
+        by_path[op] = run
+        by_name[Path(op).name] = run
+    for t in thumbs:
+        run = by_path.get(t.get("path") or "") or by_name.get(t.get("name") or "")
+        if not run:
+            continue
+        t["seed"] = run.get("seed")
+        if run.get("plate_slug"):
+            t["slug"] = run.get("plate_slug")
+
+
+def _thumb_from_file(p: Path, root: Path, bid: str, *, lettered: bool = False) -> dict[str, Any]:
+    stem = p.stem
+    if lettered and stem.endswith("_lettered"):
+        stem = stem[: -len("_lettered")]
+    found = _slugs_in_name(stem)
+    slug = "_".join(found) if found else _plate_slug(stem)
+    seed = _seed_from_stem(stem, slug)
+    run = _run_from_stem(stem, bid)
+    rel = p.relative_to(root)
+    return {
+        "path": str(p),
+        "url": "/media/" + rel.as_posix(),
+        "name": p.name,
+        "stem": p.stem,
+        "mtime": p.stat().st_mtime,
+        "book_id": bid,
+        "slug": slug,
+        "seed": seed,
+        "run": run,
+        "version": run,
+        "version_label": _version_label(run),
+        "lettered": lettered,
+    }
+
+
 def _thumbs_for_book(s: dict[str, Any], bid: str) -> list[dict[str, Any]]:
     root = Path(s["output_root"])
     d = root / bid
-    plates = d / "plates"
     thumbs: list[dict[str, Any]] = []
-    if not plates.exists():
-        return thumbs
-    for p in plates.iterdir():
-        if p.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp"}:
-            continue
-        rel = p.relative_to(root)
-        found = _slugs_in_name(p.name)
-        slug = "_".join(found) if found else _plate_slug(p.name)
-        seed = _seed_from_stem(p.stem, slug)
-        run = _run_from_stem(p.stem, bid)
-        thumbs.append(
-            {
-                "path": str(p),
-                "url": "/media/" + rel.as_posix(),
-                "name": p.name,
-                "stem": p.stem,
-                "mtime": p.stat().st_mtime,
-                "book_id": bid,
-                "slug": slug,
-                "seed": seed,
-                "run": run,
-                "version": run,
-                "version_label": _version_label(run),
-            }
-        )
+    plates = d / "plates"
+    if plates.exists():
+        for p in plates.iterdir():
+            if p.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp"}:
+                continue
+            thumbs.append(_thumb_from_file(p, root, bid, lettered=False))
+    lettered = d / "lettered"
+    if lettered.exists():
+        for p in lettered.iterdir():
+            if p.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp"}:
+                continue
+            thumbs.append(_thumb_from_file(p, root, bid, lettered=True))
     return thumbs
 
 
@@ -1199,6 +1267,7 @@ def get_runs() -> dict[str, Any]:
     if _patch_run_output_paths(data, renamed):
         save_book(s, data)
     thumbs = _thumbs_for_book(s, current)
+    _attach_run_meta(thumbs, data.get("runs") or [])
     batches = _group_by_version(thumbs)
     ordered = sorted(thumbs, key=_slug_sort_key)
     names = [c.get("name") for c in (data.get("characters") or []) if c.get("name")]
@@ -1212,8 +1281,7 @@ def get_runs() -> dict[str, Any]:
         "thumbs": ordered,
         "batches": batches,
     }
-    with _q_lock:
-        depth = len(_job_q)
+    depth = _queue_depth()
     ok, msg = _client(s).ping()
     return {
         "runs": data.get("runs") or [],
@@ -1233,6 +1301,7 @@ def post_letter(body: dict[str, Any]) -> dict[str, Any]:
     book = load_book(s)
     d = book_dir(s)
     parsed = _parse(book, s)
+    chars = _chars(book)
     by_slug = {p.slug: p for p in parsed.plates}
     only = body.get("slug")
     n = 0
@@ -1261,12 +1330,15 @@ def post_letter(body: dict[str, Any]) -> dict[str, Any]:
             for o in (only_slugs or [only])
         ):
             continue
-        caption = "\n\n".join(p.caption.strip() for p in matched if p.caption.strip())
-        if not caption:
+        beats = []
+        for p in matched:
+            more, _bar = parse_caption_lettering(p.caption, chars)
+            beats.extend(more)
+        if not beats:
             skipped += 1
             continue
         out = d / "lettered" / f"{img.stem}_lettered.png"
-        attach(img, caption, out)
+        letter_plate(img, beats, out)
         n += 1
     return {"lettered": n, "skipped": skipped, "dir": str(d / "lettered")}
 
@@ -1428,9 +1500,9 @@ def post_plates_delete(body: dict[str, Any]) -> dict[str, Any]:
             for t in b.get("thumbs") or []:
                 targets.append(Path(t["path"]))
     elif scope == "batch":
-        bid = body.get("batch_id")
+        batch_id = body.get("batch_id")
         for b in batches:
-            if b.get("id") == bid:
+            if b.get("id") == batch_id:
                 for t in b.get("thumbs") or []:
                     targets.append(Path(t["path"]))
                 break
@@ -1702,7 +1774,7 @@ def demo_cast() -> dict[str, Any]:
     book = load_book(s)
     book["characters"] = json.loads(json.dumps(DEMO_CAST))
     save_book(s, book)
-    return {"book": book}
+    return {"book": _book_payload(s, book)}
 
 
 @app.post("/api/demo/bos")

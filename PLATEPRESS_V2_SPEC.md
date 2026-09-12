@@ -1,12 +1,11 @@
 # Plate Press V2 — implementation spec
 
-**Live product behavior** is `README.md`, `HELP.md`, and the in-app Help tab. This file is the original V2 implementation spec and may lag the running app (style cards, two-pane pairing, versioned filenames, per-book cast).
+**Live product behavior** is `README.md`, `HELP.md`, and the in-app Help tab. This file is the original V2 implementation spec and lags the running app (CHARACTER1 slots, per-slug Text/Image, consistency workflow).
 
 Give this file to a coding model together with:
 
-1. The ComfyUI API workflow JSON (current: `Krea2T__00007b_API01.json` or whatever V2 graph replaces it).
-2. The last working sweep script (example: `sweep_anvMv07b_API04-comix.py` / the `05` build).
-3. Optional: `attach_captions.py` and `captions/*.txt`.
+1. The ComfyUI API workflow JSON (current: `krea2_character_consistency_workflow-03-API.json`).
+2. Optional: `attach_captions.py` and `captions/*.txt`.
 
 The model must **implement V2**, not redesign the look. The MVP already found the look. V2 makes it usable by a stranger on a local PC with ComfyUI already running.
 

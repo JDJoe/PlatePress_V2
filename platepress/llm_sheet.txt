@@ -11,10 +11,10 @@ Rules:
 
 - Do not write style, sampler, LoRA, negatives, layout instructions, or aethernouveau. Do not write a world closer.
 - Each plate starts with a slug on its own line, two digits: p01_wreck
-- Next line: CHARACTER1 is Anna (or PILOT1). Slot 1 is the first Cast card; Anna is your alias, not a lookup. CHARACTER2 is the second card.
+- Next line: PILOT1 is PingPong (or CHARACTER1 is Anna). Left as written. Write KEEP / REFERENCE yourself if a still is used. The app does not invent who is on image1.
 - Then these headings, each on its own line (or wrapped after the colon):
 
-REFERENCE: use image1 for costume only. Ignore background, pose, objects, and composition from the reference.
+REFERENCE: use image1. Keep her face, hair, body, and clothes from image1. Ignore background, pose, and setting.
 SHOT: shot size (wide / medium / full body). Not a studio portrait.
 CAMERA: where we stand, where we look. Hide both eyes. Does not face the viewer.
 LOCATION: place, ground, weather or interior. Named objects. Depth.
@@ -24,12 +24,12 @@ HANDS: what both hands are doing.
 MOTION: body, boots, pack, debris, the beat.
 
 - Do not write “left pane” / “right pane” unless the user asked for a split inside a single slug. For two-pane Settings, write two ordinary slugs; the app pairs them.
-- Captions are a second wall. Do not put narrator lines in the prompt wall.
+- Captions are a second wall. Do not put narrator lines in the prompt wall. Balloon tags belong on the caption wall, not the prompt wall.
 - If a vessel is in the scene, write spacecraft. Never ship, spaceship, starship, boat, galleon, sails, or sailing ship.
 - Hide the eyes. “Not looking at the viewer” is too weak. Name shot size and camera position.
 - Working verb grammar: Caught in the instant of [verb].
 - Metaphor examples, hung on a named object: spiderweb of black cells; wet silk into teal glass; stained glass; gold leaf over black glass; liquid silver; fire-silk; enamel.
-- Do not ask for text, logos, captions, speech balloons, or comic-page layout in the picture.
+- Do not write balloon geometry in the prompt wall. Use caption-wall tags if the plate needs speech or a caption box.
 - Refer to characters by the lock names the user provides. Default to one named body per plate. Two names only when both bodies must appear.
 - Keep identity words stable. Do not change hair, sex, suit, or helmet unless the user says so.
 - Do not put posing, standing, cute, helmet-hug, or looking over the shoulder as identity. Those belong on one slug’s CAMERA/ACTION if at all.
@@ -37,9 +37,22 @@ MOTION: body, boots, pack, debris, the beat.
 
 CAPTIONS:
 - Same slugs as PROMPTS.
-- Two or three short narrator lines.
-- Do not repeat the prompt. The caption is the moral; the prompt is the camera.
-- No lettering instructions.
+- Untagged lines: two or three short narrator lines. They become a bottom caption box on the plate when the letter column is on. Do not repeat the prompt. The caption is the moral; the prompt is the camera.
+- In-picture lettering: one tag per line. Optional speaker after the tag.
+  NS_6: PILOT2 suggested selling them.
+  NS_2: PILOT1: Then why the armed guard?
+  NS2: Speech in… | …two parts
+  OFFP: Someone outside the frame.
+  YELL: Get down!
+  FADE: I can barely hear you.
+  WHISP: Don't turn around.
+  ANN: Embargo.
+  THINK: Not the crate.
+  DREAM: Earth beef.
+  DARK: You owe me.
+  CAP_B: The capsules were beautiful, warm, and completely unmarked.
+  CAP_T: Earlier that hour.
+- Tags: NS oval speech, NSV vertical, NS2 two connected balloons, OFFP off-panel, YELL burst, FADE weak, WHISP dashed, ANN starburst, THINK oval thought, DREAM cloud, DARK black balloon, CAP_B box bottom, CAP_T box top.
 
 The user will now paste character locks (identity notes) and a prose story.
 
@@ -48,8 +61,9 @@ Return only:
 PROMPTS
 
 p01_shortname
-CHARACTER1 is Name
-REFERENCE: use image1 for costume only. Ignore background, pose, objects, and composition from the reference.
+PILOT1 is Name
+KEEP the same woman from image1, her name is Name.
+REFERENCE: use image1. Keep her face, hair, body, and clothes from image1. Ignore background, pose, and setting.
 SHOT:
 CAMERA:
 LOCATION:
@@ -60,7 +74,7 @@ MOTION:
 
 p02_shortname
 CHARACTER1 is Name
-REFERENCE: use image1 for costume only. Ignore background, pose, objects, and composition from the reference.
+REFERENCE: use image1. Keep her face, hair, body, and clothes from image1. Ignore background, pose, and setting.
 SHOT:
 CAMERA:
 LOCATION:

@@ -1,6 +1,6 @@
 # Plate Press
 
-Local ComfyUI picture-novel press. One book open at a time. You lock ink and layout in Settings, people and stills in Cast, paste a labeled shot wall in Book, queue plates through Comfy, then letter captions under the pictures.
+Local ComfyUI picture-novel press. One book open at a time. You lock ink and layout in Settings, people and stills in Cast, paste a labeled shot wall and captions in Book, then queue plates through Comfy. The letter column sends captions and balloons onto the plate at Generate. Same size. No bar under the image.
 
 This app does **not** download the ~26 GB Krea2 Turbo checkpoint. ComfyUI must already be running.
 
@@ -56,7 +56,7 @@ Factory sampler (leave it unless you mean it): 8 steps, CFG 1, euler, beta.
 Each book has its own roster. Five books can all have **ANDROID**; they are five different people.
 
 - Cast **order** is the slot: first card is `CHARACTER1` (also `PILOT1`), second is `CHARACTER2`. The name on the card is for you; `Anna` in the wall is writer text, not a lookup.
-- **Lock** is face + suit + pack. Book **Text** on: `CHARACTER1` is replaced by that lock. Book **Image** on and Text off: `CHARACTER1 is Anna` becomes `image1 is Anna`. Do not put posing, standing, or helmet-hug in the lock.
+- **Lock** is face + suit + pack. Book **Text** on prepends that lock. `PILOT1 is PingPong` stays as written. The app does not insert KEEP. Do not put posing, standing, or helmet-hug in the lock.
 - **Cutout** is a checkbox on the card. The cutout sentence lives on the Cast page.
 - A name like `PATRON` only does something if that card exists on this book.
 - 0–3 local stills per card. One body. Frontal portrait stills make the figure find the camera. Two-shots are flagged; faces fuse.
@@ -66,12 +66,13 @@ Each book has its own roster. Five books can all have **ANDROID**; they are five
 
 ## Book
 
-Two walls. Slug on its own line (`p01_wreck`). Then `CHARACTER1 is Anna` (alias is yours). Then the shot headings. The Book page has a copyable template. After Parse, **Text** and **Image** columns (with select-all in the header) choose lock, still, both, or neither.
+Two walls. Slug on its own line (`p01_wreck`). Then `PILOT1 is PingPong` as you want it in the prompt. Write KEEP / REFERENCE yourself. After Parse, **Text**, **Image**, and **letter** columns start off. Text = Cast lock. Image = still. letter = captions and balloons on the plate.
 
 ```
 p01_slug
-CHARACTER1 is Anna
-REFERENCE: use image1 for costume only. Ignore background, pose, objects, and composition from the reference.
+PILOT1 is PingPong
+KEEP the same woman from image1, her name is PingPong.
+REFERENCE: use image1. Keep her face, hair, body, and clothes from image1. Ignore background, pose, and setting.
 SHOT: Medium side action shot.
 CAMERA: Where we stand, where we look. Both eyes hidden. Does not face the viewer.
 LOCATION: Place, ground, weather or interior.
@@ -81,7 +82,7 @@ HANDS: What both hands are doing.
 MOTION: Body, boots, pack, debris, the beat.
 ```
 
-Captions use the same slugs and keep newlines. Caption is the moral; prompt is the camera. Do not paste captions into the prompt wall. Do not paste ink, closer, sampler, or `aethernouveau`.
+Captions use the same slugs. Check **letter** so Generate paints them on the plate (same size, no extra bar). Untagged lines become a bottom box (`CAP_B`). `CAP_T` is the top box. Tags (`NS`, `NS_6`, …) choose balloon shape and cell. Do not paste ink, closer, sampler, or `aethernouveau`.
 
 **Parse** before you generate. The table header checkbox selects or clears every slug. Click a prompt (or Copy) to copy the full assembled text Comfy will get — the hover hint cannot be selected. **Generate selected** uses the checked rows and always queues a **new version**, even if this book already has plates. It Parses first. **Generate missing** honors skip. **Generate all** does every plate. Default: 2 seeds per plate (`batch_size = 1` in the graph).
 
@@ -105,7 +106,7 @@ Only the open book. Each Generate is a version, newest grid on top:
 
 p010 sorts after p001. No seed in the file name.
 
-**Letter all** / **Letter this** attaches a cream bar under the plate (width unchanged, height grows). Empty captions skip. Two-pane lettering uses both captions.
+**Letter all** / **Letter this** is optional extra drawing on a copy. The usual path is Generate with the letter column on.
 
 **Export pack** writes `export/` with lettered PNGs, `captions/`, `assembled_prompts.txt`, `seeds.json`.
 

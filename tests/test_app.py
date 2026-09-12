@@ -74,7 +74,14 @@ def test_index_and_parse_t1(tmp_path, monkeypatch):
     assert r.status_code == 200
     body = r.json()
     assert len(body["plates"]) == 10
-    assert any(p["risky_twoshot"] for p in body["plates"])
+    assert all(p["use_text"] is False for p in body["plates"])
+    assert all(p["use_image"] is False for p in body["plates"])
+    assert all(p.get("use_letter") is False for p in body["plates"])
+    r = client.post("/api/parse", json={"slug_opts": {
+        p["slug"]: {"use_text": True, "use_image": False} for p in body["plates"]
+    }})
+    assert r.status_code == 200
+    assert any(p["risky_twoshot"] for p in r.json()["plates"])
     r = client.get("/api/llm-sheet")
     assert "CHARACTER LOCKS" in r.json()["text"]
     assert "ANDROID" in r.json()["text"]
@@ -291,6 +298,27 @@ def test_next_run_groups_regenerates(tmp_path):
     assert any(new.name == "default_v02_p001_cargo.png" for old, new in renamed)
 
 
+def test_thumbs_include_lettered_folder(tmp_path):
+    from platepress.app import _thumbs_for_book
+
+    bid = "scratch"
+    root = tmp_path / "books"
+    plates = root / bid / "plates"
+    lettered = root / bid / "lettered"
+    plates.mkdir(parents=True)
+    lettered.mkdir()
+    (plates / f"{bid}_v01_p001_heist.png").write_bytes(b"a")
+    (lettered / f"{bid}_v01_p001_heist_lettered.png").write_bytes(b"b")
+    thumbs = _thumbs_for_book({"output_root": str(root)}, bid)
+    names = {t["name"] for t in thumbs}
+    assert f"{bid}_v01_p001_heist.png" in names
+    assert f"{bid}_v01_p001_heist_lettered.png" in names
+    let = next(t for t in thumbs if t["lettered"])
+    assert let["slug"] == "p001_heist"
+    assert let["run"] == 1
+    assert "/lettered/" in let["url"]
+
+
 def test_group_thumbs_splits_batches():
     from platepress.app import _group_thumbs
 
@@ -326,6 +354,64 @@ def test_group_by_version_newest_first():
     assert len(batches[1]["thumbs"]) == 2
 
 
+def test_plate_slug_key_is_exact():
+    from platepress.app import _plate_slug_key
+
+    assert _plate_slug_key("book_v01_p001_cut.png") == ("p001_cut",)
+    assert _plate_slug_key("book_v01_p001_cutout.png") == ("p001_cutout",)
+    assert _plate_slug_key("book_v01_p001_cargo_p002_claim.png") == ("p001_cargo", "p002_claim")
+    assert _plate_slug_key("book_v01_p001_cut.png") != _plate_slug_key("book_v01_p001_cutout.png")
+
+
+def test_attach_run_meta_puts_seed_on_thumb():
+    from platepress.app import _attach_run_meta
+
+    thumbs = [
+        {"path": "/books/x/plates/x_v01_p001_heist.png", "name": "x_v01_p001_heist.png", "slug": "p001_heist"},
+        {"path": "/books/x/plates/x_v01_p001_heist_2.png", "name": "x_v01_p001_heist_2.png", "slug": "p001_heist"},
+    ]
+    runs = [
+        {"output_path": "/books/x/plates/x_v01_p001_heist.png", "seed": 11, "plate_slug": "p01_heist", "status": "done"},
+        {"output_path": "/books/x/plates/x_v01_p001_heist_2.png", "seed": 22, "plate_slug": "p01_heist", "status": "done"},
+    ]
+    _attach_run_meta(thumbs, runs)
+    assert thumbs[0]["seed"] == 11
+    assert thumbs[1]["seed"] == 22
+
+
+def test_delete_batch_does_not_rename_book(tmp_path, monkeypatch):
+    from platepress import store
+    from platepress.app import app as flaskish
+
+    monkeypatch.setattr(store, "DEFAULT_SETTINGS_PATH", tmp_path / "settings.json")
+    s = store.default_settings()
+    s["output_root"] = str(tmp_path / "books")
+    store.save_settings(s, tmp_path / "settings.json")
+    client = TestClient(flaskish)
+    r = client.post("/api/book/new", json={"title": "Scratch", "id": "scratch"})
+    assert r.status_code == 200
+    bid = r.json()["book"]["id"]
+    plates = tmp_path / "books" / bid / "plates"
+    plates.mkdir(parents=True, exist_ok=True)
+    (plates / f"{bid}_v01_p001_cut.png").write_bytes(b"a")
+    (plates / f"{bid}_v02_p001_cut.png").write_bytes(b"b")
+    r = client.post("/api/plates/delete", json={"confirm": True, "scope": "batch", "batch_id": "v01", "book_id": bid})
+    assert r.status_code == 200
+    ids = [b["id"] for b in client.get("/api/books").json()["books"]]
+    assert "v01" not in ids
+    assert bid in ids
+    assert not (plates / f"{bid}_v01_p001_cut.png").exists()
+    assert (plates / f"{bid}_v02_p001_cut.png").exists()
+
+
+def test_next_cast_name_is_character_slot():
+    from platepress.app import _next_token
+
+    assert _next_token([]) == "CHARACTER1"
+    assert _next_token([{"name": "CHARACTER1"}]) == "CHARACTER2"
+    assert _next_token([{"name": "PingPong"}]) == "CHARACTER1"
+
+
 def test_one_ref_per_character_even_if_card_has_two(tmp_path):
     from platepress.app import _refs_for
     from platepress.parser import Character, Plate
@@ -357,6 +443,18 @@ def test_one_ref_per_character_even_if_card_has_two(tmp_path):
     assert refs == [b]
     plate.named_ids = []
     assert _refs_for(plate, chars) == []
+    plate.use_image = True
+    assert _refs_for(plate, chars) == [b]
+
+
+def test_neg_allow_lettering_drops_text_ban():
+    from platepress.defaults import NEG, neg_allow_lettering
+
+    out = neg_allow_lettering(NEG)
+    assert "watermark" in out
+    parts = {p.strip().lower() for p in out.split(",")}
+    assert "text" not in parts
+    assert "letters" not in parts
 
 
 def test_normalize_loras_from_legacy_fields():

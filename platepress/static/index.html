@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Plate Press</title>
-  <link rel="stylesheet" href="/static/style.css?v=21" />
+  <link rel="stylesheet" href="/static/style.css?v=22" />
 </head>
 <body>
   <header>
@@ -132,11 +132,12 @@
         </div>
       </div>
       <p class="tiny">This book only. Default is Settings <code>krea2_character_consistency_workflow-03-API.json</code>. Open that graph in Comfy, change nodes or parameters, <strong>Save (API Format)</strong>, drop the JSON in this book’s <code>workflows/</code> folder (or shared <code>platepress/workflows/</code>), Refresh list, pick it. Must be based on the default. Extra nodes stay. Settings UNET/LoRAs still apply. The save prefix is still filled so Queue can find files.</p>
-      <p class="tiny">Slug on its own line (<code>p01_wreck</code>). Then <code>CHARACTER1 is Anna</code> (Anna is your name for slot 1). Then the shot headings. After Parse, Text and Image columns choose lock, still, both, or neither. Do not paste aethernouveau here. Say spacecraft, not ship.</p>
+      <p class="tiny">Slug on its own line (<code>p01_wreck</code>). Then <code>PILOT1 is PingPong</code> stays as written — write KEEP / REFERENCE yourself. After Parse, Text, Image, and letter start off. letter sends captions and balloons onto the plate. Do not paste aethernouveau here. Say spacecraft, not ship.</p>
       <p class="tiny">Plate template — copy into the wall:</p>
       <pre id="plate-template" class="plate-template">p01_slug
-CHARACTER1 is Anna
-REFERENCE: use image1 for costume only. Ignore background, pose, objects, and composition from the reference.
+PILOT1 is PingPong
+KEEP the same woman from image1, her name is PingPong.
+REFERENCE: use image1. Keep her face, hair, body, and clothes from image1. Ignore background, pose, and setting.
 SHOT: Medium side action shot.
 CAMERA: Where we stand, where we look. Full body / over the shoulder / profile. Both eyes hidden. Does not face the viewer.
 LOCATION: Place, ground, weather or interior. Named objects.
@@ -146,9 +147,10 @@ HANDS: What both hands are doing.
 MOTION: Body, boots, pack, debris, the beat.</pre>
       <button type="button" class="act ghost" id="copy-plate-template">Copy plate template</button>
       <label>Prompts / story</label>
-      <textarea id="prompts_raw" class="tall" placeholder="p01_slug&#10;CHARACTER1 is Anna&#10;REFERENCE: use image1 for costume only. Ignore background, pose, objects, and composition from the reference.&#10;SHOT:&#10;CAMERA:&#10;LOCATION:&#10;ACTION: Caught in the instant of &#10;GAZE:&#10;HANDS:&#10;MOTION:"></textarea>
+      <textarea id="prompts_raw" class="tall" placeholder="p01_slug&#10;PILOT1 is PingPong&#10;KEEP the same woman from image1, her name is PingPong.&#10;REFERENCE: use image1. Keep her face, hair, body, and clothes from image1. Ignore background, pose, and setting.&#10;SHOT:&#10;CAMERA:&#10;LOCATION:&#10;ACTION: Caught in the instant of &#10;GAZE:&#10;HANDS:&#10;MOTION:"></textarea>
       <label>Captions</label>
-      <textarea id="captions_raw" class="tall" placeholder="p1_cargo&#10;line&#10;line"></textarea>
+      <textarea id="captions_raw" class="tall" placeholder="p02_treasure&#10;CAP_B: The capsules were beautiful, warm, and completely unmarked.&#10;NS: PILOT2: We should sell them.&#10;NSV: PILOT1: Then why the armed guard?"></textarea>
+      <p class="tiny">Same slugs as the story. Check the <strong>letter</strong> column so Generate paints them on the plate (same size, no bar underneath). Untagged lines → bottom box (<code>CAP_B</code>). <code>CAP_T</code> top box. Balloons: <code>NS</code> <code>NSV</code> <code>NS2</code> <code>OFFP</code> <code>YELL</code> <code>FADE</code> <code>WHISP</code> <code>ANN</code> <code>THINK</code> <code>DREAM</code> <code>DARK</code>. Place: <code>NS_6: PILOT2 suggested selling them.</code> Grid <code>1 2 / 3 4 / 5 6</code>. Speaker: <code>NS_2: PILOT1: line</code>.</p>
       <button class="act" id="save-book">Save book</button>
       <button class="act" id="parse">Parse</button>
       <button class="act ghost" id="demo-bos">Load Bos Sidereal demo</button>
@@ -163,8 +165,9 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
         <thead>
           <tr>
             <th><input type="checkbox" id="slug-all" title="Select all slugs" checked /></th>
-            <th><input type="checkbox" id="text-all" title="Use text on all slugs" checked /> text</th>
+            <th><input type="checkbox" id="text-all" title="Use text on all slugs" /> text</th>
             <th><input type="checkbox" id="image-all" title="Use still on all slugs" /> image</th>
+            <th><input type="checkbox" id="letter-all" title="Send captions and balloons to Comfy" /> letter</th>
             <th>slug</th><th>cast</th><th>metaphor</th><th>warn</th><th>prompt</th>
           </tr>
         </thead>
@@ -175,13 +178,18 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
     <section id="view-queue" class="view">
       <h2 data-book-heading="Queue"></h2>
       <p class="tiny" id="qstatus"></p>
-      <button class="act" id="letter-all">Letter all</button>
+      <button class="act" id="letter-all-btn">Letter all</button>
       <button class="act ghost" id="export">Export pack</button>
       <button class="act ghost" id="open-folder">Open folder</button>
       <button class="act ghost" id="del-earlier">Delete earlier plates</button>
       <button class="act ghost" id="del-all-plates">Delete all plates in this book</button>
       <div id="thumbs"></div>
     </section>
+    <div id="lightbox" hidden>
+      <button type="button" class="act ghost" id="lightbox-close">Close</button>
+      <img id="lightbox-img" alt="" />
+      <p id="lightbox-cap" class="tiny"></p>
+    </div>
 
     <section id="view-help" class="view help">
       <h2>Help</h2>
@@ -192,7 +200,7 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
         <li>Settings — pick a style card, Test connection.</li>
         <li>Cast — this book’s people. Optional stills.</li>
         <li>Book — paste the labeled shot wall. Parse. Generate.</li>
-        <li>Queue — letter captions <em>after</em> the sampler. Never ask Comfy for text in the picture.</li>
+        <li>Queue — watch the plates. Captions and balloons are in the picture when you Generated with the letter column on. Plate size does not change.</li>
       </ol>
 
       <h3>Settings</h3>
@@ -202,9 +210,9 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
         <li><strong>Style cards are the mode.</strong> There is no Plate layout radio.</li>
         <li><strong>Bos, one plate</strong>: each slug is one image. If that slug contains <code>left pane:</code> / <code>right pane:</code>, only that plate splits.</li>
         <li><strong>Two-pane comic</strong>: consecutive slugs share one image (p1 left, p2 right). Do not write “Left pane” yourself. Each pane is its own scene as written.</li>
-        <li>Click a card to fill ink, layout line, and matching negatives. World closer stays empty on Bos; two-pane fills the pane closer. The boxes stay editable.</li>
+        <li>Click a card to fill ink, layout line, and matching negatives, and save Settings. World closer stays empty on Bos; two-pane fills the pane closer. The boxes stay editable.</li>
         <li><strong>Ink</strong> and <strong>Layout line</strong> are prepended to every plate. <strong>World closer</strong> only if that box has text (empty on Bos).</li>
-        <li>On Book, each slug has <strong>Text</strong> and <strong>Image</strong>. Text inserts the Cast lock for <code>CHARACTER1</code>. Image sends that card’s still to <code>image1</code>. Both off: the wall is sent as written, no lock, no still. Header checkboxes select or clear a column.</li>
+        <li>On Book, each slug has <strong>Text</strong>, <strong>Image</strong>, and <strong>letter</strong>. All start off. Text inserts the Cast lock. Image sends the still. letter sends captions and balloons to Comfy on the plate (same size, no bar under the image). Header checkboxes select or clear a column.</li>
         <li><strong>Model and LoRAs</strong> — shared Settings. <strong>Load lists from Comfy</strong> and pick the exact UNETLoader name. Combo name is the listed folder plus the listed file (<code>KREA2/krea2_turbo_bf16.safetensors</code>). Softlinks keep those names. Must be a Krea 2 UNET. Not saved on the book.</li>
         <li><strong>API workflow</strong> is per book. Default is Settings <code>krea2_character_consistency_workflow-03-API.json</code>. Open the default in Comfy, change nodes or parameters, <strong>Save (API Format)</strong>, put the JSON in this book’s <code>workflows/</code> folder, pick it on the Book page. Extra nodes stay. The app still fills prompt, seed, Settings UNET/LoRAs, and the save prefix.</li>
         <li>Do not touch sampler unless you mean it. Factory: 8 steps, CFG 1, euler, beta.</li>
@@ -215,7 +223,7 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
         <li>Cast is per book. Five books can all have ANDROID; they are not the same person.</li>
         <li>Header plus Cast, Book, Queue, and Settings headings show the open book.</li>
         <li>First card is <code>CHARACTER1</code> / <code>PILOT1</code>, second is <code>CHARACTER2</code>. The name on the card is for you; <code>Anna</code> in the wall is writer text.</li>
-        <li>Lock is face + suit + pack. Per-slug Text on Book inserts it. Per-slug Image sends the still. Cutout is per character on this page.</li>
+        <li>Lock is face + suit + pack. Per-slug Text on Book inserts it. Per-slug Image sends the still. Cutout is per character on this page and is sent when Image is on.</li>
         <li>A name like <code>PATRON</code> only works if that card exists on this book.</li>
         <li>0–3 local stills per card. One body. Frontal portraits make the figure find the camera.</li>
         <li><strong>Lock seed</strong> on a thumb in Queue, then later plates of that character can reuse it.</li>
@@ -225,8 +233,9 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
       <h3>Book</h3>
       <p>Story wall (copy the template on the Book page):</p>
       <pre>p01_slug
-CHARACTER1 is Anna
-REFERENCE: use image1 for costume only. Ignore background, pose, objects, and composition from the reference.
+PILOT1 is PingPong
+KEEP the same woman from image1, her name is PingPong.
+REFERENCE: use image1. Keep her face, hair, body, and clothes from image1. Ignore background, pose, and setting.
 SHOT: Medium side action shot.
 CAMERA: Where we stand, where we look. Both eyes hidden. Does not face the viewer.
 LOCATION: Place, ground, weather or interior.
@@ -235,10 +244,10 @@ GAZE: Eyes on a named thing in the frame, never the viewer.
 HANDS: What both hands are doing.
 MOTION: Body, boots, pack, debris, the beat.</pre>
       <ul>
-        <li>Slug on its own line (<code>p01_wreck</code>). <code>CHARACTER1 is Anna</code> (or <code>PILOT1</code>): slot 1 is the first Cast card; Anna is writer text. Book <strong>Text</strong> replaces <code>CHARACTER1</code> with the lock. <strong>Image</strong> (Text off) turns it into <code>image1 is Anna</code> and uploads the still. SHOT/ACTION/REFERENCE stay writer text. No KEEP line is added.</li>
+        <li>Slug on its own line. Cast name can be anything. Wall <code>CHARACTER1</code> / <code>PILOT1</code> is the first card. <strong>Text</strong>: token becomes the lock, <code>is PingPong</code> stays. <strong>Image</strong>: still is <code>image1</code>. <strong>Both</strong>: lock in the prompt and the still. Write KEEP yourself.</li>
         <li>Do not paste ink, closer, sampler, or <code>aethernouveau</code> here. The app prepends ink and the layout line (and closer if that box is not empty).</li>
         <li>Hide the eyes. Working verb: <strong>caught in the instant of [verb]</strong>.</li>
-        <li>Captions: same slugs, keep newlines, in the <strong>Captions</strong> box. Caption is the moral. Prompt is the camera.</li>
+        <li>Captions go to Comfy when the <strong>letter</strong> column is on. Untagged lines become a bottom box on the plate (<code>CAP_B</code>). <code>CAP_T</code> is the top box. Place a balloon: <code>NS_6: line</code> — grid <code>1 2 / 3 4 / 5 6</code>. The plate size does not grow.</li>
         <li>The default book is the demo. It cannot be deleted from the UI.</li>
         <li><strong>Parse</strong> before generate. Check the two-shot column. Click a prompt (or Copy) to copy the full assembled text Comfy will get.</li>
         <li>Header checkboxes: generate-select, Text column, Image column.</li>
@@ -260,10 +269,10 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
 
       <h3>Queue / Letter</h3>
       <ul>
-        <li>This page shows only the open book.</li>
+        <li>This page shows only the open book. Click a thumb to view it larger (Esc or click the dark to close).</li>
         <li>File names: <code>{book_id}_v01_p001_slug.png</code>; two-pane pair <code>{book_id}_v01_p001_slug_p002_other.png</code>; second seed <code>…_2.png</code>. Each Generate is a new version, newest grid on top. p010 after p001. No seed in the name.</li>
         <li>Thumbs land in the book <code>plates/</code> folder.</li>
-        <li><strong>Letter all</strong> / <strong>Letter this</strong> attaches a cream bar under the plate. Width unchanged. Height grows. Empty captions skip. Pair files use both captions.</li>
+        <li><strong>Letter all</strong> / <strong>Letter this</strong> is optional extra drawing on a copy. The usual path is Generate with the letter column on.</li>
         <li><strong>Export pack</strong> writes lettered PNGs, <code>captions/</code>, <code>assembled_prompts.txt</code>, <code>seeds.json</code>.</li>
         <li>Reroll = new seed from the current Book wall (saves first), not the old file. New version.</li>
         <li>Delete one file, earlier versions, or all plates in this book (story/stills stay).</li>
@@ -279,6 +288,6 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
       </ul>
     </section>
   </main>
-  <script src="/static/app.js?v=44"></script>
+  <script src="/static/app.js?v=48"></script>
 </body>
 </html>

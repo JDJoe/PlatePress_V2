@@ -6,6 +6,7 @@ import json
 import os
 import re
 import shutil
+import threading
 import uuid
 from pathlib import Path
 from typing import Any
@@ -174,6 +175,8 @@ def match_combo_name(wanted: str, available: list[str]) -> str | None:
     if len(hits) == 1:
         return hits[0]
     return None
+
+_IO = threading.RLock()
 
 ROOT = Path(__file__).resolve().parent.parent
 PKG = Path(__file__).resolve().parent
@@ -392,18 +395,19 @@ def job_workflows(settings: dict[str, Any], book: dict[str, Any]) -> tuple[Path,
 
 
 def load_book(settings: dict[str, Any], book_id: str | None = None, create: bool = True) -> dict[str, Any]:
-    d = book_dir(settings, book_id, create=create)
-    path = d / "book.json"
-    if path.exists():
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-            chars_path = d / "characters.json"
-            if chars_path.exists():
-                data["characters"] = json.loads(chars_path.read_text(encoding="utf-8"))
-            return data
-        except json.JSONDecodeError:
-            pass
-    return empty_book(d.name)
+    with _IO:
+        d = book_dir(settings, book_id, create=create)
+        path = d / "book.json"
+        if path.exists():
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+                chars_path = d / "characters.json"
+                if chars_path.exists():
+                    data["characters"] = json.loads(chars_path.read_text(encoding="utf-8"))
+                return data
+            except json.JSONDecodeError:
+                pass
+        return empty_book(d.name)
 
 
 def _book_rel(book_root: Path, value: str) -> str:
@@ -428,27 +432,29 @@ def ensure_demo_book(settings: dict[str, Any]) -> None:
 
 
 def save_book(settings: dict[str, Any], book: dict[str, Any]) -> Path:
-    d = book_dir(settings, book.get("id"))
-    chars = book.get("characters") or []
-    for c in chars:
-        c["ref_images"] = [_book_rel(d, p) for p in (c.get("ref_images") or []) if p]
-        if c.get("ref_active"):
-            c["ref_active"] = _book_rel(d, c["ref_active"])
-    (d / "characters.json").write_text(json.dumps(chars, indent=2) + "\n", encoding="utf-8")
-    (d / "prompts_raw.txt").write_text(book.get("prompts_raw") or "", encoding="utf-8")
-    (d / "captions_raw.txt").write_text(book.get("captions_raw") or "", encoding="utf-8")
-    (d / "book.json").write_text(json.dumps(book, indent=2) + "\n", encoding="utf-8")
-    return d
+    with _IO:
+        d = book_dir(settings, book.get("id"))
+        chars = book.get("characters") or []
+        for c in chars:
+            c["ref_images"] = [_book_rel(d, p) for p in (c.get("ref_images") or []) if p]
+            if c.get("ref_active"):
+                c["ref_active"] = _book_rel(d, c["ref_active"])
+        (d / "characters.json").write_text(json.dumps(chars, indent=2) + "\n", encoding="utf-8")
+        (d / "prompts_raw.txt").write_text(book.get("prompts_raw") or "", encoding="utf-8")
+        (d / "captions_raw.txt").write_text(book.get("captions_raw") or "", encoding="utf-8")
+        (d / "book.json").write_text(json.dumps(book, indent=2) + "\n", encoding="utf-8")
+        return d
 
 
 def append_run(settings: dict[str, Any], run: dict[str, Any], book_id: str | None = None) -> None:
-    d = book_dir(settings, book_id)
-    with (d / "run_log.jsonl").open("a", encoding="utf-8") as f:
-        f.write(json.dumps(run) + "\n")
-    book = load_book(settings, book_id)
-    runs = book.setdefault("runs", [])
-    runs.append(run)
-    save_book(settings, book)
+    with _IO:
+        d = book_dir(settings, book_id)
+        with (d / "run_log.jsonl").open("a", encoding="utf-8") as f:
+            f.write(json.dumps(run) + "\n")
+        book = load_book(settings, book_id)
+        runs = book.setdefault("runs", [])
+        runs.append(run)
+        save_book(settings, book)
 
 
 def write_seeds(settings: dict[str, Any], seeds: dict[str, Any], book_id: str | None = None) -> None:
