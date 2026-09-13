@@ -892,7 +892,7 @@ def post_generate(body: dict[str, Any]) -> dict[str, Any]:
         if "Hand-lettered readable ink" in (assembled or ""):
             job_neg = neg_allow_lettering(job_neg)
         for seed in seeds:
-            prefix = f"PP_{book_id}_v{run_no:02d}_{pad_slug(job_slug) if right is None else job_slug}"
+            prefix = _file_stem(book_id, job_slug, run_no)
             jobs.append(
                 {
                     "book_id": book_id,
@@ -953,10 +953,66 @@ _SLUG_IN_NAME = re.compile(
     re.I,
 )
 _CANON_SLUG = r"(?:p|t)\d{3,}_[A-Za-z0-9]+(?:_(?!p\d+_|t\d+_|\d+$)[A-Za-z0-9]+)*"
+# P01-wreck-v01-book  /  P01-cargo-P02-claim-v01-book-2
+_NEW_STEM_TAIL = re.compile(
+    r"-v(\d{2,})-([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)(?:-(\d{1,9}))?$",
+    re.I,
+)
+_PLATE_FILE_PART = re.compile(
+    r"([PT])(\d{2,})-([A-Za-z0-9]+(?:-(?![PT]\d{2,}-)[A-Za-z0-9]+)*)",
+    re.I,
+)
+FILE_PAD = 2
+
+
+def _safe_token(s: str) -> str:
+    s = (s or "").strip().replace("_", "-")
+    s = re.sub(r"[^A-Za-z0-9-]+", "", s)
+    s = re.sub(r"-{2,}", "-", s).strip("-")
+    return s.lower() or "x"
+
+
+def _strip_lettered(stem: str) -> str:
+    s = stem or ""
+    for suf in ("-lettered", "_lettered"):
+        if s.lower().endswith(suf):
+            return s[: -len(suf)]
+    return s
+
+
+def _plate_file_part(slug: str) -> str:
+    m = re.match(r"^([pt])(\d+)_(.+)$", slug or "", re.I)
+    if not m:
+        return _safe_token(slug)
+    return f"{m.group(1).upper()}{int(m.group(2)):0{FILE_PAD}d}-{_safe_token(m.group(3))}"
+
+
+def _parse_new_stem(stem: str) -> dict[str, Any] | None:
+    stem = _strip_lettered(Path(stem or "").stem)
+    m = _NEW_STEM_TAIL.search(stem)
+    if not m:
+        return None
+    body = stem[: m.start()]
+    parts = _PLATE_FILE_PART.findall(body)
+    if not parts:
+        return None
+    slugs = [
+        f"{let.lower()}{int(num):03d}_{rest.replace('-', '_')}"
+        for let, num, rest in parts
+    ]
+    return {
+        "slugs": slugs,
+        "run": int(m.group(1)),
+        "book": m.group(2),
+        "dup": int(m.group(3)) if m.group(3) else None,
+    }
 
 
 def _slugs_in_name(name: str) -> list[str]:
-    stem = Path(name or "").stem
+    stem = _strip_lettered(Path(name or "").stem)
+    parsed = _parse_new_stem(stem)
+    if parsed:
+        return parsed["slugs"]
     return [m.group(1) for m in _SLUG_IN_NAME.finditer(stem)]
 
 
@@ -991,8 +1047,10 @@ def _seed_from_stem(stem: str, slug: str | None = None) -> int | None:
 
 def _file_stem(book_id: str, slug: str, run: int) -> str:
     found = _slugs_in_name(slug)
-    body = "_".join(pad_slug(x) for x in found[:2]) if found else pad_slug(slug)
-    return f"{book_id}_v{int(run):02d}_{body}"
+    if not found:
+        found = [slug]
+    plates = "-".join(_plate_file_part(s) for s in found[:2])
+    return f"{plates}-v{int(run):02d}-{_safe_token(book_id)}"
 
 
 def _version_label(run: int | None) -> str:
@@ -1002,6 +1060,9 @@ def _version_label(run: int | None) -> str:
 
 
 def _run_from_stem(stem: str, book_id: str) -> int | None:
+    parsed = _parse_new_stem(stem)
+    if parsed:
+        return parsed["run"]
     prefix = f"{book_id}_"
     if not stem.startswith(prefix):
         return None
@@ -1024,6 +1085,16 @@ def _next_run(plates_dir: Path, book_id: str) -> int:
 
 
 def _is_canonical_stem(stem: str, book_id: str, slug: str) -> bool:
+    parsed = _parse_new_stem(stem)
+    if parsed:
+        combo = "_".join(parsed["slugs"]) if parsed["slugs"] else slug
+        base = _file_stem(book_id, combo, parsed["run"])
+        if stem == base:
+            return True
+        if not stem.startswith(base + "-"):
+            return False
+        extra = stem[len(base) + 1 :]
+        return extra.isdigit()
     prefix = f"{book_id}_"
     if not stem.startswith(prefix):
         return False
@@ -1042,13 +1113,13 @@ def _next_canonical_stem(book_id: str, slug: str, taken: set[str], run: int) -> 
     if base not in taken:
         return base
     n = 2
-    while f"{base}_{n}" in taken:
+    while f"{base}-{n}" in taken or f"{base}_{n}" in taken:
         n += 1
-    return f"{base}_{n}"
+    return f"{base}-{n}"
 
 
 def normalize_plate_filenames(book_root: Path, book_id: str) -> list[tuple[Path, Path]]:
-    """Rename plates to {book_id}_v01_p001_slug.png. Seed is not in the file name."""
+    """Rename junk Comfy dumps to P01-name-v01-book.png. Leave already-canonical names."""
     plates = book_root / "plates"
     if not plates.exists():
         return []
@@ -1061,7 +1132,8 @@ def normalize_plate_filenames(book_root: Path, book_id: str) -> list[tuple[Path,
     taken: set[str] = set()
     pending: list[Path] = []
     for p in files:
-        slug = _plate_slug(p.name)
+        found = _slugs_in_name(p.name)
+        slug = "_".join(found) if found else _plate_slug(p.name)
         if _is_canonical_stem(p.stem, book_id, slug):
             taken.add(p.stem)
         else:
@@ -1069,7 +1141,8 @@ def normalize_plate_filenames(book_root: Path, book_id: str) -> list[tuple[Path,
     renamed: list[tuple[Path, Path]] = []
     lettered = book_root / "lettered"
     for p in pending:
-        slug = _plate_slug(p.name)
+        found = _slugs_in_name(p.name)
+        slug = "_".join(found) if found else _plate_slug(p.name)
         ver = _run_from_stem(p.stem, book_id) or 1
         new_stem = _next_canonical_stem(book_id, slug, taken, run=ver)
         taken.add(new_stem)
@@ -1080,9 +1153,13 @@ def normalize_plate_filenames(book_root: Path, book_id: str) -> list[tuple[Path,
         p.rename(dest)
         renamed.append((p, dest))
         if lettered.exists():
-            sib = lettered / f"{old_stem}_lettered{p.suffix}"
-            if sib.exists():
-                sib.rename(lettered / f"{new_stem}_lettered{p.suffix}")
+            for sib in (
+                lettered / f"{old_stem}-lettered{p.suffix}",
+                lettered / f"{old_stem}_lettered{p.suffix}",
+            ):
+                if sib.exists():
+                    sib.rename(lettered / f"{new_stem}-lettered{p.suffix}")
+                    break
     return renamed
 
 
@@ -1113,9 +1190,15 @@ def _slug_sort_key(t: dict[str, Any]) -> tuple:
     run = t.get("run")
     if run is None:
         run = _run_from_stem(stem, t.get("book_id") or "") or 0
-    m = _SLUG_IN_NAME.search(stem)
-    plate = int(m.group(2)) if m else 10_000
-    slug = m.group(1).lower() if m else stem.lower()
+    parsed = _parse_new_stem(stem)
+    if parsed and parsed["slugs"]:
+        m = re.match(r"^[pt](\d+)_", parsed["slugs"][0], re.I)
+        plate = int(m.group(1)) if m else 10_000
+        slug = parsed["slugs"][0].lower()
+    else:
+        m = _SLUG_IN_NAME.search(stem)
+        plate = int(m.group(2)) if m else 10_000
+        slug = m.group(1).lower() if m else stem.lower()
     return (int(run), plate, slug, name.lower())
 
 
@@ -1229,9 +1312,7 @@ def _attach_run_meta(thumbs: list[dict[str, Any]], runs: list[dict[str, Any]]) -
 
 
 def _thumb_from_file(p: Path, root: Path, bid: str, *, lettered: bool = False) -> dict[str, Any]:
-    stem = p.stem
-    if lettered and stem.endswith("_lettered"):
-        stem = stem[: -len("_lettered")]
+    stem = _strip_lettered(p.stem)
     found = _slugs_in_name(stem)
     slug = "_".join(found) if found else _plate_slug(stem)
     seed = _seed_from_stem(stem, slug)
@@ -1352,7 +1433,7 @@ def post_letter(body: dict[str, Any]) -> dict[str, Any]:
         if not beats:
             skipped += 1
             continue
-        out = d / "lettered" / f"{img.stem}_lettered.png"
+        out = d / "lettered" / f"{_strip_lettered(img.stem)}-lettered.png"
         letter_plate(img, beats, out)
         n += 1
     return {"lettered": n, "skipped": skipped, "dir": str(d / "lettered")}
@@ -1372,7 +1453,7 @@ def post_export() -> dict[str, Any]:
     lettered = d / "lettered"
     n = 0
     if lettered.exists():
-        for p in lettered.glob("*_lettered.png"):
+        for p in list(lettered.glob("*-lettered.png")) + list(lettered.glob("*_lettered.png")):
             shutil.copy2(p, exp / p.name)
             n += 1
     parsed = _parse(book, s)
@@ -1538,10 +1619,13 @@ def post_plates_delete(body: dict[str, Any]) -> dict[str, Any]:
         stems.add(p.stem)
         p.unlink()
         n += 1
-        sib = lettered / f"{p.stem}_lettered.png"
-        if sib.exists():
-            sib.unlink()
-            n += 1
+        for sib in (
+            lettered / f"{_strip_lettered(p.stem)}-lettered.png",
+            lettered / f"{_strip_lettered(p.stem)}_lettered.png",
+        ):
+            if sib.exists():
+                sib.unlink()
+                n += 1
     book = load_book(s, bid)
     book["id"] = bid
     if scope == "all":

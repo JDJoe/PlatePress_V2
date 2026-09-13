@@ -69,7 +69,7 @@ MOTION: Body, boots, pack, debris, the beat.
 - Never describe a person as a shape, silhouette, smear, pale shape, or receding figure. That melts the body. Write a complete person, full body, in focus. CAMERA is empty air — “a figure at the edge” becomes a third person.
 - Captions: same slugs, in the **Captions** box. Check the **letter** column so Generate paints them on the plate. Untagged lines become a bottom box (`CAP_B`). `CAP_T` is the top box. The plate does not grow.
 - The default book is the demo. It cannot be deleted from the UI.
-- **Parse** before generate. Check the two-shot column. Click a prompt (or Copy) to copy the full assembled text Comfy will get.
+- **Parse** before generate. Slug checkboxes stay as you left them. Click a prompt (or Copy) to copy the full assembled text Comfy will get.
 - Header checkboxes: generate-select, Text, Image, letter.
 - **Generate selected** uses the checked rows and always queues a new version. It Parses first. Skip only applies to Generate missing.
 - Assembler: **ink, layout line, closer (if any), Book wall**. No KEEP line is added.
@@ -99,11 +99,12 @@ Metaphor examples: spiderweb of black cells; wet silk into teal glass; stained g
 ## Queue / Letter
 
 - This page shows only the open book. Click a thumb to view it larger (Esc or click the dark to close).
-- File names:
-  - `{book_id}_v01_p001_slug.png`
-  - two-pane pair: `{book_id}_v01_p001_slug_p002_other.png`
-  - second seed: `…_2.png`
-- Each Generate is a new version (v01, then v02) with its own grid, newest on top. p010 sorts after p001. No seed in the name.
+- File names (hyphens, no spaces):
+  - `P01-wreck-v01-same-clouds.png`
+  - two-pane pair: `P01-cargo-P02-claim-v01-bos.png`
+  - second seed: `P01-wreck-v01-same-clouds-2.png`
+  - lettered copy: `P01-wreck-v01-same-clouds-lettered.png`
+- Each Generate is a new version (v01, then v02) with its own grid, newest on top. Files sort by plate (`P01` then `P02`). No seed in the name.
 - Thumbs land in the book `plates/` folder.
 - **Letter all** / **Letter this** is optional extra drawing on a copy. The usual path is Generate with the letter column on.
 - **Export pack** writes lettered PNGs, `captions/`, `assembled_prompts.txt`, `seeds.json`.

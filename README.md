@@ -84,7 +84,7 @@ MOTION: Body, boots, pack, debris, the beat.
 
 Captions use the same slugs. Check **letter** so Generate paints them on the plate (same size, no extra bar). Untagged lines become a bottom box (`CAP_B`). `CAP_T` is the top box. Tags (`NS`, `NS_6`, …) choose balloon shape and cell. Do not paste ink, closer, sampler, or `aethernouveau`.
 
-**Parse** before you generate. The table header checkbox selects or clears every slug. Click a prompt (or Copy) to copy the full assembled text Comfy will get — the hover hint cannot be selected. **Generate selected** uses the checked rows and always queues a **new version**, even if this book already has plates. It Parses first. **Generate missing** honors skip. **Generate all** does every plate. Default: 2 seeds per plate (`batch_size = 1` in the graph).
+**Parse** before you generate. Slug checkboxes stay as you left them. The table header checkbox selects or clears every slug. Click a prompt (or Copy) to copy the full assembled text Comfy will get — the hover hint cannot be selected. **Generate selected** uses the checked rows and always queues a **new version**, even if this book already has plates. It Parses first. **Generate missing** honors skip. **Generate all** does every plate. Default: 2 seeds per plate (`batch_size = 1` in the graph).
 
 The app assembles **ink, layout line, closer (if that box has text), Book wall**. It does not add KEEP lines. **Text** on replaces `CHAR1` with the first Cast lock. **Image** on (Text off) turns that into `image1 is Anna` and uploads the still. Both off: no lock, no still. Hide the eyes. Working verb: **caught in the instant of [verb]**. Do not call a person a pale shape, silhouette, or receding figure — Krea melts them.
 
@@ -100,11 +100,12 @@ Metaphor examples: spiderweb of black cells; wet silk into teal glass; stained g
 
 Only the open book. Each Generate is a version, newest grid on top:
 
-- one plate: `{book_id}_v01_p001_slug.png`
-- two-pane pair: `{book_id}_v01_p001_slug_p002_other.png`
-- second seed of the same job: `…_2.png`
+- one plate: `P01-wreck-v01-same-clouds.png`
+- two-pane pair: `P01-cargo-P02-claim-v01-bos.png`
+- second seed: `P01-wreck-v01-same-clouds-2.png`
+- lettered copy: `P01-wreck-v01-same-clouds-lettered.png`
 
-p010 sorts after p001. No seed in the file name.
+Files sort by plate (`P01` then `P02`). No seed in the file name.
 
 **Letter all** / **Letter this** is optional extra drawing on a copy. The usual path is Generate with the letter column on.
 

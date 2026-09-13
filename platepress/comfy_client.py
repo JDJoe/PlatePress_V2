@@ -194,7 +194,7 @@ class ComfyClient:
                 if path.exists() or n > 1:
                     k = n if n > 1 else 2
                     while True:
-                        cand = dest_dir / f"{stem}_{k}{ext}"
+                        cand = dest_dir / f"{stem}-{k}{ext}"
                         if not cand.exists():
                             path = cand
                             break

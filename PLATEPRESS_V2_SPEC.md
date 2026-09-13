@@ -1,6 +1,6 @@
 # Plate Press V2 — implementation spec
 
-**Live product behavior** is `README.md`, `HELP.md`, and the in-app Help tab. This file is the original V2 implementation spec and lags the running app (CHAR1 slots, per-slug Text/Image, consistency workflow).
+**Live product behavior** is `README.md`, `HELP.md`, and the in-app Help tab. This file is the original V2 implementation spec and lags the running app (CHAR1 slots, `P01-name-v01-book.png` files, per-slug Text/Image, consistency workflow).
 
 Give this file to a coding model together with:
 

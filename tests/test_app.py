@@ -185,7 +185,7 @@ def test_runs_only_current_book(tmp_path, monkeypatch):
     body = r.json()
     assert body["current"] == nid
     names = [t["name"] for t in body["thumbs"]]
-    assert names == [f"{nid}_v01_p001_new.png"]
+    assert names == [f"P01-new-v01-{nid}.png"]
     assert [b["id"] for b in body["books"]] == [nid]
     assert body["thumbs"][0]["book_id"] == nid
     assert body["thumbs"][0]["slug"] == "p001_new"
@@ -236,19 +236,25 @@ def test_slug_keeps_extra_underscores():
             self.slug = slug
 
     assert _slugs_in_name("p08_wrong_place") == ["p08_wrong_place"]
-    assert _file_stem("same_clouds", "p08_wrong_place", 1) == "same_clouds_v01_p008_wrong_place"
+    assert _file_stem("same_clouds", "p08_wrong_place", 1) == "P08-wrong-place-v01-same-clouds"
+    assert _plate_slug("P08-wrong-place-v01-same-clouds.png") == "p008_wrong_place"
+    assert _plate_slug("P08-wrong-place-v01-same-clouds-2.png") == "p008_wrong_place"
     assert _plate_slug("same_clouds_v01_p008_wrong_place.png") == "p008_wrong_place"
-    assert _plate_slug("same_clouds_v01_p008_wrong_place_2.png") == "p008_wrong_place"
+    assert _slugs_in_name("P08-wrong-place-P09-other-side-v03-same-clouds.png") == [
+        "p008_wrong_place",
+        "p009_other_side",
+    ]
     assert _slugs_in_name("same_clouds_v03_p008_wrong_place_p009_other_side.png") == [
         "p008_wrong_place",
         "p009_other_side",
     ]
     assert (
         _file_stem("same_clouds", "p008_wrong_place_p009_other_side", 3)
-        == "same_clouds_v03_p008_wrong_place_p009_other_side"
+        == "P08-wrong-place-P09-other-side-v03-same-clouds"
     )
+    assert _is_canonical_stem("P08-wrong-place-v01-same-clouds", "same_clouds", "p008_wrong_place")
+    assert _is_canonical_stem("P08-wrong-place-v01-same-clouds-2", "same_clouds", "p008_wrong_place")
     assert _is_canonical_stem("same_clouds_v01_p008_wrong_place", "same_clouds", "p008_wrong_place")
-    assert _is_canonical_stem("same_clouds_v01_p008_wrong_place_2", "same_clouds", "p008_wrong_place")
     plates = [P("p08_wrong_place"), P("p09_other_side")]
     assert _resolve_slug("p008_wrong_place", plates) == "p08_wrong_place"
     assert _resolve_slug("p008_wrong", plates) == "p08_wrong_place"
@@ -264,9 +270,9 @@ def test_normalize_plate_filenames_uses_book_id(tmp_path):
     (plates / "untitled_p5_embargo.png").write_bytes(b"keep")
     renamed = normalize_plate_filenames(tmp_path, "untitled")
     names = sorted(p.name for p in plates.iterdir())
-    assert "untitled_v01_p005_embargo.png" in names
+    assert "P05-embargo-v01-untitled.png" in names
     assert all("1346841254129315" not in n for n in names)
-    assert all(n.startswith("untitled_v01_p005_embargo") for n in names)
+    assert all(n.startswith("P05-embargo-v01-untitled") for n in names)
     assert len(renamed) == 3
 
 
@@ -278,8 +284,9 @@ def test_next_run_groups_regenerates(tmp_path):
     (plates / "default_v01_p001_cargo.png").write_bytes(b"a")
     (plates / "default_v01_p010_enough.png").write_bytes(b"b")
     assert _next_run(plates, "default") == 2
-    assert _file_stem("default", "p1_cargo", 2) == "default_v02_p001_cargo"
-    assert _file_stem("default", "p001_cargo_p002_claim", 4) == "default_v04_p001_cargo_p002_claim"
+    assert _file_stem("default", "p1_cargo", 2) == "P01-cargo-v02-default"
+    assert _file_stem("default", "p001_cargo_p002_claim", 4) == "P01-cargo-P02-claim-v04-default"
+    assert _run_from_stem("P01-cargo-v02-default-2", "default") == 2
     assert _run_from_stem("default_v02_p001_cargo_2", "default") == 2
     assert _run_from_stem("default_001_p001_cargo", "default") == 1
     names = [
@@ -288,14 +295,18 @@ def test_next_run_groups_regenerates(tmp_path):
         _file_stem("default", "p1_cargo", 2),
     ]
     assert names == [
-        "default_v01_p001_cargo",
-        "default_v01_p010_enough",
-        "default_v02_p001_cargo",
+        "P01-cargo-v01-default",
+        "P10-enough-v01-default",
+        "P01-cargo-v02-default",
     ]
-    assert sorted(names) == names
+    assert sorted(names) == [
+        "P01-cargo-v01-default",
+        "P01-cargo-v02-default",
+        "P10-enough-v01-default",
+    ]
     (plates / "default_002_p001_cargo.png").write_bytes(b"legacy")
     renamed = normalize_plate_filenames(tmp_path, "default")
-    assert any(new.name == "default_v02_p001_cargo.png" for old, new in renamed)
+    assert any(new.name == "P01-cargo-v02-default.png" for old, new in renamed)
 
 
 def test_thumbs_include_lettered_folder(tmp_path):
@@ -361,6 +372,8 @@ def test_plate_slug_key_is_exact():
     assert _plate_slug_key("book_v01_p001_cutout.png") == ("p001_cutout",)
     assert _plate_slug_key("book_v01_p001_cargo_p002_claim.png") == ("p001_cargo", "p002_claim")
     assert _plate_slug_key("book_v01_p001_cut.png") != _plate_slug_key("book_v01_p001_cutout.png")
+    assert _plate_slug_key("P01-cut-v01-book.png") == ("p001_cut",)
+    assert _plate_slug_key("P01-cargo-P02-claim-v01-book.png") == ("p001_cargo", "p002_claim")
 
 
 def test_attach_run_meta_puts_seed_on_thumb():
