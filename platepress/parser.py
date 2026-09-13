@@ -21,9 +21,12 @@ _INLINE_PANES = re.compile(
     r"left\s*pane\s*[:,]?\s*(.*?)\s*right\s*pane\s*[:,]?\s*(.*)",
     re.I | re.S,
 )
-# CHARACTER1 / PILOT1 → Cast slot 1. The name after "is" is writer text, not a lookup.
-_CHAR_TOKEN = re.compile(r"(?i)\b(?:CHARACTER|PILOT)(\d+)\b")
-_SLOT_LOCK_LINE = re.compile(r"(?i)^(?:CHARACTER|PILOT)\d+\s+is\b")
+# CHAR1 / PILOT1 → Cast slot 1. CHARACTER1 still parses, then becomes CHAR1.
+# The name after "is" is writer text, not a lookup. "CHARACTER" paints a person.
+_SLOT_WORD = r"(?:CHARACTER|PILOT|CHAR)"
+_CHAR_TOKEN = re.compile(rf"(?i)\b{_SLOT_WORD}(\d+)\b")
+_SLOT_LOCK_LINE = re.compile(rf"(?i)^{_SLOT_WORD}\d+\s+is\b")
+_SLOT_EXACT = re.compile(rf"(?i)^{_SLOT_WORD}(\d+)$")
 _NO_LETTER_LAYOUT = re.compile(
     r",?\s*no (?:text|captions|speech balloons|letters)\b",
     re.I,
@@ -63,7 +66,7 @@ _TAG_CELL = re.compile(
     re.I,
 )
 _SPEAKER_PREFIX = re.compile(
-    r"^((?:CHARACTER|PILOT)\d+|[A-Za-z][A-Za-z0-9_]*)\s*:\s*(.+)$",
+    r"^(" + _SLOT_WORD + r"\d+|[A-Za-z][A-Za-z0-9_]*)\s*:\s*(.+)$",
     re.I,
 )
 LETTERING_CLOSER = (
@@ -211,7 +214,7 @@ def _character_hits(text: str, character_names: list[str]) -> list[str]:
 
 
 def parse_character_decls(body: str, character_names: list[str]) -> list[tuple[int, str]]:
-    """CHARACTER1 → first Cast card, CHARACTER2 → second. Writer alias is ignored."""
+    """CHAR1 → first Cast card, CHAR2 → second. Writer alias is ignored."""
     slots: dict[int, str] = {}
     for m in _CHAR_TOKEN.finditer(body or ""):
         slot = int(m.group(1))
@@ -222,7 +225,7 @@ def parse_character_decls(body: str, character_names: list[str]) -> list[tuple[i
 
 
 def expand_character_decls(body: str, by_name: dict[str, Character]) -> str:
-    """Replace CHARACTER1 with that slot's Cast lock. Leave 'is Anna and …' as written."""
+    """Replace CHAR1 with that slot's Cast lock. Leave 'is Anna and …' as written."""
     names = list(by_name)
     slots = dict(parse_character_decls(body, names))
 
@@ -239,8 +242,13 @@ def expand_character_decls(body: str, by_name: dict[str, Character]) -> str:
 
 
 def character_tokens_to_images(body: str) -> str:
-    """CHARACTER1 is Anna → image1 is Anna. Text off, still on."""
+    """CHAR1 is Anna → image1 is Anna. Text off, still on."""
     return _CHAR_TOKEN.sub(lambda m: f"image{int(m.group(1))}", body or "")
+
+
+def _canon_slot_tokens(text: str) -> str:
+    """CHARACTER1 → CHAR1 so Krea does not paint an extra person."""
+    return re.sub(r"(?i)\bCHARACTER(\d+)\b", r"CHAR\1", text or "")
 
 
 def _strip_character_tokens(text: str, character_names: set[str]) -> str:
@@ -365,7 +373,7 @@ def _cast_slot_name(token: str, characters: list[Character]) -> str | None:
     raw = (token or "").strip()
     if not raw:
         return None
-    m = re.match(r"(?i)^(?:CHARACTER|PILOT)(\d+)$", raw)
+    m = _SLOT_EXACT.match(raw)
     if m:
         idx = int(m.group(1)) - 1
         if 0 <= idx < len(characters):
@@ -442,10 +450,10 @@ def parse_caption_lettering(
         sm = _SPEAKER_PREFIX.match(rest)
         if sm and tag not in {"CAP_B", "CAP_T"}:
             maybe = _cast_slot_name(sm.group(1), characters)
-            if maybe or re.match(r"(?i)^(?:CHARACTER|PILOT)\d+$", sm.group(1) or ""):
+            if maybe or _SLOT_EXACT.match(sm.group(1) or ""):
                 speaker = maybe or sm.group(1)
                 rest = (sm.group(2) or "").strip()
-                mslot = re.match(r"(?i)^(?:CHARACTER|PILOT)(\d+)$", sm.group(1) or "")
+                mslot = _SLOT_EXACT.match(sm.group(1) or "")
                 if mslot:
                     slot = int(mslot.group(1))
                 elif maybe:
@@ -524,7 +532,7 @@ def _spacecraft(text: str) -> str:
 
 
 def _join_scene_clauses(clauses: list[str]) -> str:
-    """Join wall chunks as sentences. 'CHARACTER1 is Celine' then 'Celine, …' must not glue."""
+    """Join wall chunks as sentences. 'CHAR1 is Celine' then 'Celine, …' must not glue."""
     parts = [c.strip() for c in clauses if c and str(c).strip()]
     if not parts:
         return ""
@@ -539,7 +547,7 @@ def _join_scene_clauses(clauses: list[str]) -> str:
 
 
 def _flatten_scene(scene: str) -> str:
-    """One line for the API. Blank lines and CHARACTER1 is … stay their own sentences."""
+    """One line for the API. Blank lines and CHAR1 is … stay their own sentences."""
     clauses: list[str] = []
     for para in re.split(r"\n\s*\n", scene or ""):
         chunk: list[str] = []
@@ -634,7 +642,7 @@ def locks_for_scene(
     scene: str,
     use_text: bool = True,
 ) -> list[str]:
-    """Cast locks for a scene. Skip a lock already written into the wall (CHARACTER1)."""
+    """Cast locks for a scene. Skip a lock already written into the wall (CHAR1)."""
     if not use_text:
         return []
     scene = scene or ""
@@ -853,6 +861,7 @@ def parse_book(
             named = []
             scene = body
             locks_for_assemble = []
+        scene = _canon_slot_tokens(scene)
         scene = _image_slots(_spacecraft(scene))
         if re.search(r"\bKEEP\b", scene, re.I):
             scene = re.sub(r"\s*for costume only\b", "", scene, flags=re.I)
@@ -865,7 +874,7 @@ def parse_book(
             hits = list(named)
             if named:
                 pw.append(
-                    f"{slug}: Image on, no PILOT1 in the wall — {', '.join(named)} → image1"
+                    f"{slug}: Image on, no CHAR1 in the wall — {', '.join(named)} → image1"
                 )
             else:
                 pw.append(f"{slug}: Image is on but no still on Cast")
@@ -884,12 +893,16 @@ def parse_book(
             pane_right_ids = _character_hits(raw_panes[1], names)
             pane_left = _image_slots(
                 _spacecraft(
-                    re.sub(r"\s+", " ", _strip_character_tokens(raw_panes[0], name_set)).strip()
+                    _canon_slot_tokens(
+                        re.sub(r"\s+", " ", _strip_character_tokens(raw_panes[0], name_set)).strip()
+                    )
                 )
             )
             pane_right = _image_slots(
                 _spacecraft(
-                    re.sub(r"\s+", " ", _strip_character_tokens(raw_panes[1], name_set)).strip()
+                    _canon_slot_tokens(
+                        re.sub(r"\s+", " ", _strip_character_tokens(raw_panes[1], name_set)).strip()
+                    )
                 )
             )
         risky = len(hits) >= 2

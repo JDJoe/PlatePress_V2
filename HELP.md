@@ -33,8 +33,8 @@ API graph: `krea2_character_consistency_workflow-03-API.json` (text and stills; 
 
 - Cast is per book. Five books can all have ANDROID; they are not the same person.
 - Header plus Cast, Book, Queue, and Settings headings show which book you are editing.
-- First Cast card is `CHARACTER1` / `PILOT1`, second is `CHARACTER2`. `Anna` after `is` is writer text, not a Cast lookup.
-- **Lock** is face + suit + pack. Book **Text** on prepends that lock. `PILOT1 is PingPong` stays as written. The app does not insert KEEP. Do not put posing, standing, or helmet-hug in the lock.
+- First Cast card is `CHAR1` / `PILOT1`, second is `CHAR2`. `Anna` after `is` is writer text, not a Cast lookup. Do not write `CHARACTER1` — Krea paints a person.
+- **Lock** is face + suit + pack. Book **Text** on prepends that lock. `CHAR1 is PingPong` stays as written. The app does not insert KEEP. Do not put posing, standing, or helmet-hug in the lock.
 - **Cutout** is a checkbox on the card. Cutout sentence is on the Cast page. It is sent only when that plate’s Image column is on.
 - Never put posing, standing, cute, helmet-hug, or looking over the shoulder in the lock. Helmet and over-shoulder live on one slug.
 - A name like `PATRON` only works if that card exists on this book.
@@ -45,11 +45,11 @@ API graph: `krea2_character_consistency_workflow-03-API.json` (text and stills; 
 
 ## Book
 
-Story wall. Slug, then `PILOT1 is PingPong`, then KEEP / REFERENCE if you want the still, then the shot headings. Copy the template on the Book page. **Text**, **Image**, and **letter** start off.
+Story wall. Slug, then `CHAR1 is PingPong`, then KEEP / REFERENCE if you want the still, then the shot headings. Copy the template on the Book page. **Text**, **Image**, and **letter** start off.
 
 ```
 p01_slug
-PILOT1 is PingPong
+CHAR1 is PingPong
 KEEP the same woman from image1, her name is PingPong.
 REFERENCE: use image1. Keep her face, hair, body, and clothes from image1. Ignore background, pose, and setting.
 SHOT: Medium side action shot.
@@ -62,7 +62,7 @@ MOTION: Body, boots, pack, debris, the beat.
 ```
 
 - Slug on its own line (`p01_wreck`, `t1_one`). Two digits so p010 sorts after p001.
-- Cast **name** can be anything (PingPong). New cards default to `CHARACTER1`, `CHARACTER2`. On the wall, `CHARACTER1` / `PILOT1` means **first card**, `CHARACTER2` second. **Text** on: that token becomes the lock, `is PingPong` stays. **Image** on: still is `image1`, token stays unless Text is also on. **Both**: same prompt as Text, plus the still. Write KEEP yourself.
+- Cast **name** can be anything (PingPong). New cards default to `CHAR1`, `CHAR2`. On the wall, `CHAR1` / `PILOT1` means **first card**, `CHAR2` second. **Text** on: that token becomes the lock, `is PingPong` stays. **Image** on: still is `image1`, token stays unless Text is also on. **Both**: same prompt as Text, plus the still. Write KEEP yourself. `CHARACTER1` still parses, then becomes `CHAR1`.
 - Do not paste ink, closer, sampler, or `aethernouveau` here. The app prepends ink and the layout line (and closer if that box is not empty).
 - Hide the eyes. `not looking at the viewer` is often ignored. Name shot size and where we stand.
 - Working verb: **caught in the instant of [verb]**.
@@ -90,7 +90,7 @@ Metaphor examples: spiderweb of black cells; wet silk into teal glass; stained g
 
 ## Refs
 
-- Per slug **Image** column, not a Settings switch. `CHARACTER1` → `image1`, `CHARACTER2` → `image2`.
+- Per slug **Image** column, not a Settings switch. `CHAR1` → `image1`, `CHAR2` → `image2`.
 - Text off + Image on: the wall reads `image1 is Anna`. Write KEEP/REFERENCE yourself if you want it.
 - Frontal “look at me” stills clone that pose. Use a full-body costume still.
 - Cutout is per Cast card. Prefer writing REFERENCE on the wall.

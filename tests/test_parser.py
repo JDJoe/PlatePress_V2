@@ -312,9 +312,10 @@ Celine, a woman with focused expression, turns a brass dial on the bedside table
     p = r.plates[0]
     assert "CHARACTER1 is Celine Celine" not in p.scene_text
     assert "CHARACTER1 is Celine Celine" not in p.assembled
-    assert "CHARACTER1 is Celine." in p.scene_text
+    assert "CHAR1 is Celine." in p.scene_text
     assert "Celine, a woman with focused expression" in p.scene_text
-    assert "CHARACTER1 is Celine." in p.assembled
+    assert "CHAR1 is Celine." in p.assembled
+    assert "CHARACTER1" not in p.assembled
 
 
 def test_character_lock_line_split_without_blank():
@@ -326,10 +327,11 @@ ACTION: Anna is forcing open the alien container.
 """
     r = parse_book(wall, "", CAST)
     scene = r.plates[0].scene_text
-    assert "CHARACTER1 is Anna." in scene
+    assert "CHAR1 is Anna." in scene
     assert "SHOT: Wide action shot" in scene
-    assert "CHARACTER1 is Anna SHOT" not in scene
-    assert "CHARACTER1 is Anna. SHOT" in scene
+    assert "CHAR1 is Anna SHOT" not in scene
+    assert "CHAR1 is Anna. SHOT" in scene
+    assert "CHARACTER1" not in scene
 
 
 def test_image_on_without_pilot_uses_first_cast_still():
@@ -351,7 +353,7 @@ REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and 
     assert "picture1" not in p.assembled
     assert "image1" in p.assembled
     assert "for costume only" not in p.assembled.lower()
-    assert any("no PILOT1" in w for w in p.warnings)
+    assert any("no CHAR1" in w for w in p.warnings)
 
 
 def test_picture1_becomes_image1_and_warns():
@@ -588,6 +590,41 @@ right pane: PATRON He looks down from the cracked oil portrait, gold leaf on the
     assert left_lock == -1 or left_lock < portrait or ANDROID not in asm[portrait:]
 
 
+def test_char1_is_the_slot_token():
+    wall = """
+p01_heist
+CHAR1 is Anna
+SHOT: Wide action shot inside a cargo bay.
+ACTION: Anna is forcing open the alien container.
+"""
+    r = parse_on(wall, "", CAST)
+    p = r.plates[0]
+    assert p.character_ids == ["ANDROID"]
+    assert ANDROID in p.scene_text
+    assert "CHAR1" not in p.scene_text
+    assert "CHARACTER1" not in p.assembled
+    assert "is Anna" in p.scene_text
+
+
+def test_char3_room_lock_is_not_a_person_word():
+    cast = [
+        Character(id="c", name="Celine", lock_text="A blond 30 year old"),
+        Character(id="x", name="CHAR2", lock_text=""),
+        Character(id="r", name="ROOM", lock_text="a small hotel room, brass lamp, cream wallpaper"),
+    ]
+    wall = """
+p001_bed
+CHAR1 is Celine
+CHAR3 is the room
+Celine turns a brass dial.
+"""
+    r = parse_book(wall, "", cast, use_text_for={"p001_bed": True})
+    p = r.plates[0]
+    assert "CHARACTER" not in p.assembled
+    assert "a small hotel room, brass lamp, cream wallpaper is the room" in p.scene_text
+    assert "A blond 30 year old is Celine" in p.scene_text
+
+
 def test_character1_is_cast_slot_one_alias_is_writer_text():
     wall = """
 p01_heist
@@ -678,7 +715,8 @@ ACTION: empty cargo bay, no people.
 """
     r = parse_book(wall, "", CAST, use_text_for={"p01_heist": False}, use_image_for={"p01_heist": False})
     p = r.plates[0]
-    assert "CHARACTER1 is Anna" in p.assembled
+    assert "CHAR1 is Anna" in p.assembled
+    assert "CHARACTER1" not in p.assembled
     assert ANDROID not in p.assembled
     assert "blue space suit" in p.scene_text
     assert p.use_text is False
@@ -699,7 +737,8 @@ ACTION: Anna opens the crate.
         n_pictures_for={"p01_heist": 1},
     )
     p = r.plates[0]
-    assert "CHARACTER1 is Anna" in p.scene_text
+    assert "CHAR1 is Anna" in p.scene_text
+    assert "CHARACTER1" not in p.scene_text
     assert "image1 is Anna" not in p.scene_text
     assert "KEEP the woman same" not in p.assembled
     assert p.use_image is True
@@ -739,7 +778,8 @@ ACTION: Anna opens the crate.
     assert p.use_image is False
     assert p.character_ids == []
     assert ANDROID not in p.scene_text
-    assert "CHARACTER1 is Anna" in p.scene_text
+    assert "CHAR1 is Anna" in p.scene_text
+    assert "CHARACTER1" not in p.scene_text
 
 
 def test_locks_for_scene_skips_embedded_character1():

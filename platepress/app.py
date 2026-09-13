@@ -191,7 +191,7 @@ def _still_path(c: Character) -> Path | None:
 
 
 def _ref_pairs(plate, chars: list[Character], names: list[str] | None = None) -> list[tuple[str, Path]]:
-    """Stills in CHARACTERn / named order. Default lock does not send a still."""
+    """Stills in CHARn / named order. Default lock does not send a still."""
     by = {c.name: c for c in chars}
     if names is not None:
         ids = names
@@ -458,7 +458,7 @@ def _next_token(chars: list[dict[str, Any]]) -> str:
     names = {(c.get("name") or "").strip().upper() for c in chars}
     i = 1
     while True:
-        n = f"CHARACTER{i}"
+        n = f"CHAR{i}"
         if n.upper() not in names:
             return n
         i += 1

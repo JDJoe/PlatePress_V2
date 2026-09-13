@@ -407,9 +407,10 @@ def test_delete_batch_does_not_rename_book(tmp_path, monkeypatch):
 def test_next_cast_name_is_character_slot():
     from platepress.app import _next_token
 
-    assert _next_token([]) == "CHARACTER1"
-    assert _next_token([{"name": "CHARACTER1"}]) == "CHARACTER2"
-    assert _next_token([{"name": "PingPong"}]) == "CHARACTER1"
+    assert _next_token([]) == "CHAR1"
+    assert _next_token([{"name": "CHAR1"}]) == "CHAR2"
+    assert _next_token([{"name": "PingPong"}]) == "CHAR1"
+    assert _next_token([{"name": "CHARACTER1"}]) == "CHAR1"
 
 
 def test_one_ref_per_character_even_if_card_has_two(tmp_path):

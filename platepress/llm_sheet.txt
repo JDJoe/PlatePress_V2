@@ -11,7 +11,7 @@ Rules:
 
 - Do not write style, sampler, LoRA, negatives, layout instructions, or aethernouveau. Do not write a world closer.
 - Each plate starts with a slug on its own line, two digits: p01_wreck
-- Next line: PILOT1 is PingPong (or CHARACTER1 is Anna). Left as written. Write KEEP / REFERENCE yourself if a still is used. The app does not invent who is on image1.
+- Next line: CHAR1 is PingPong (or CHAR2, CHAR3). Slot tokens only — never write CHARACTER1; that word makes Krea paint a person. PILOT1 still means first card. Left as written. Write KEEP / REFERENCE yourself if a still is used. The app does not invent who is on image1.
 - Then these headings, each on its own line (or wrapped after the colon):
 
 REFERENCE: use image1. Keep her face, hair, body, and clothes from image1. Ignore background, pose, and setting.
@@ -61,7 +61,7 @@ Return only:
 PROMPTS
 
 p01_shortname
-PILOT1 is Name
+CHAR1 is Name
 KEEP the same woman from image1, her name is Name.
 REFERENCE: use image1. Keep her face, hair, body, and clothes from image1. Ignore background, pose, and setting.
 SHOT:
@@ -73,7 +73,7 @@ HANDS:
 MOTION:
 
 p02_shortname
-CHARACTER1 is Name
+CHAR1 is Name
 REFERENCE: use image1. Keep her face, hair, body, and clothes from image1. Ignore background, pose, and setting.
 SHOT:
 CAMERA:

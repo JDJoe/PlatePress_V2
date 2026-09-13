@@ -132,10 +132,10 @@
         </div>
       </div>
       <p class="tiny">This book only. Default is Settings <code>krea2_character_consistency_workflow-03-API.json</code>. Open that graph in Comfy, change nodes or parameters, <strong>Save (API Format)</strong>, drop the JSON in this book’s <code>workflows/</code> folder (or shared <code>platepress/workflows/</code>), Refresh list, pick it. Must be based on the default. Extra nodes stay. Settings UNET/LoRAs still apply. The save prefix is still filled so Queue can find files.</p>
-      <p class="tiny">Slug on its own line (<code>p01_wreck</code>). Then <code>PILOT1 is PingPong</code> stays as written — write KEEP / REFERENCE yourself. After Parse, Text, Image, and letter start off. letter sends captions and balloons onto the plate. Do not paste aethernouveau here. Say spacecraft, not ship.</p>
+      <p class="tiny">Slug on its own line (<code>p01_wreck</code>). Then <code>CHAR1 is PingPong</code> stays as written — write KEEP / REFERENCE yourself. After Parse, Text, Image, and letter start off. letter sends captions and balloons onto the plate. Do not paste aethernouveau here. Say spacecraft, not ship. Do not write <code>CHARACTER1</code>.</p>
       <p class="tiny">Plate template — copy into the wall:</p>
       <pre id="plate-template" class="plate-template">p01_slug
-PILOT1 is PingPong
+CHAR1 is PingPong
 KEEP the same woman from image1, her name is PingPong.
 REFERENCE: use image1. Keep her face, hair, body, and clothes from image1. Ignore background, pose, and setting.
 SHOT: Medium side action shot.
@@ -147,7 +147,7 @@ HANDS: What both hands are doing.
 MOTION: Body, boots, pack, debris, the beat.</pre>
       <button type="button" class="act ghost" id="copy-plate-template">Copy plate template</button>
       <label>Prompts / story</label>
-      <textarea id="prompts_raw" class="tall" placeholder="p01_slug&#10;PILOT1 is PingPong&#10;KEEP the same woman from image1, her name is PingPong.&#10;REFERENCE: use image1. Keep her face, hair, body, and clothes from image1. Ignore background, pose, and setting.&#10;SHOT:&#10;CAMERA:&#10;LOCATION:&#10;ACTION: Caught in the instant of &#10;GAZE:&#10;HANDS:&#10;MOTION:"></textarea>
+      <textarea id="prompts_raw" class="tall" placeholder="p01_slug&#10;CHAR1 is PingPong&#10;KEEP the same woman from image1, her name is PingPong.&#10;REFERENCE: use image1. Keep her face, hair, body, and clothes from image1. Ignore background, pose, and setting.&#10;SHOT:&#10;CAMERA:&#10;LOCATION:&#10;ACTION: Caught in the instant of &#10;GAZE:&#10;HANDS:&#10;MOTION:"></textarea>
       <label>Captions</label>
       <textarea id="captions_raw" class="tall" placeholder="p02_treasure&#10;CAP_B: The capsules were beautiful, warm, and completely unmarked.&#10;NS: PILOT2: We should sell them.&#10;NSV: PILOT1: Then why the armed guard?"></textarea>
       <p class="tiny">Same slugs as the story. Check the <strong>letter</strong> column so Generate paints them on the plate (same size, no bar underneath). Untagged lines → bottom box (<code>CAP_B</code>). <code>CAP_T</code> top box. Balloons: <code>NS</code> <code>NSV</code> <code>NS2</code> <code>OFFP</code> <code>YELL</code> <code>FADE</code> <code>WHISP</code> <code>ANN</code> <code>THINK</code> <code>DREAM</code> <code>DARK</code>. Place: <code>NS_6: PILOT2 suggested selling them.</code> Grid <code>1 2 / 3 4 / 5 6</code>. Speaker: <code>NS_2: PILOT1: line</code>.</p>
@@ -222,7 +222,7 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
       <ul>
         <li>Cast is per book. Five books can all have ANDROID; they are not the same person.</li>
         <li>Header plus Cast, Book, Queue, and Settings headings show the open book.</li>
-        <li>First card is <code>CHARACTER1</code> / <code>PILOT1</code>, second is <code>CHARACTER2</code>. The name on the card is for you; <code>Anna</code> in the wall is writer text.</li>
+        <li>First card is <code>CHAR1</code> / <code>PILOT1</code>, second is <code>CHAR2</code>. The name on the card is for you; <code>Anna</code> in the wall is writer text. Do not write <code>CHARACTER1</code> — Krea paints a person.</li>
         <li>Lock is face + suit + pack. Per-slug Text on Book inserts it. Per-slug Image sends the still. Cutout is per character on this page and is sent when Image is on.</li>
         <li>A name like <code>PATRON</code> only works if that card exists on this book.</li>
         <li>0–3 local stills per card. One body. Frontal portraits make the figure find the camera.</li>
@@ -233,7 +233,7 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
       <h3>Book</h3>
       <p>Story wall (copy the template on the Book page):</p>
       <pre>p01_slug
-PILOT1 is PingPong
+CHAR1 is PingPong
 KEEP the same woman from image1, her name is PingPong.
 REFERENCE: use image1. Keep her face, hair, body, and clothes from image1. Ignore background, pose, and setting.
 SHOT: Medium side action shot.
@@ -244,7 +244,7 @@ GAZE: Eyes on a named thing in the frame, never the viewer.
 HANDS: What both hands are doing.
 MOTION: Body, boots, pack, debris, the beat.</pre>
       <ul>
-        <li>Slug on its own line. Cast name can be anything. Wall <code>CHARACTER1</code> / <code>PILOT1</code> is the first card. <strong>Text</strong>: token becomes the lock, <code>is PingPong</code> stays. <strong>Image</strong>: still is <code>image1</code>. <strong>Both</strong>: lock in the prompt and the still. Write KEEP yourself.</li>
+        <li>Slug on its own line. Cast name can be anything. Wall <code>CHAR1</code> / <code>PILOT1</code> is the first card. <strong>Text</strong>: token becomes the lock, <code>is PingPong</code> stays. <strong>Image</strong>: still is <code>image1</code>. <strong>Both</strong>: lock in the prompt and the still. Write KEEP yourself.</li>
         <li>Do not paste ink, closer, sampler, or <code>aethernouveau</code> here. The app prepends ink and the layout line (and closer if that box is not empty).</li>
         <li>Hide the eyes. Working verb: <strong>caught in the instant of [verb]</strong>.</li>
         <li>Captions go to Comfy when the <strong>letter</strong> column is on. Untagged lines become a bottom box on the plate (<code>CAP_B</code>). <code>CAP_T</code> is the top box. Place a balloon: <code>NS_6: line</code> — grid <code>1 2 / 3 4 / 5 6</code>. The plate size does not grow.</li>
@@ -261,7 +261,7 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
 
       <h3>Refs</h3>
       <ul>
-        <li>Per slug <strong>Image</strong> column. <code>CHARACTER1</code> → <code>image1</code>, <code>CHARACTER2</code> → <code>image2</code>.</li>
+        <li>Per slug <strong>Image</strong> column. <code>CHAR1</code> → <code>image1</code>, <code>CHAR2</code> → <code>image2</code>.</li>
         <li>Text off + Image on: the wall reads <code>image1 is Anna</code>. Write KEEP/REFERENCE yourself if you want it.</li>
         <li>Frontal “look at me” stills clone that pose. Prefer a full-body costume still.</li>
         <li>Cutout is per Cast card. Prefer writing REFERENCE on the wall.</li>
