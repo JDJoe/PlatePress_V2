@@ -32,6 +32,12 @@ _NO_LETTER_LAYOUT = re.compile(
     re.I,
 )
 _NO_TEXT_TAIL = re.compile(r"No text\.\s*", re.I)
+# Krea melts the body if a person is a shape / smear / receding pale figure.
+_MELT_PERSON = re.compile(
+    r"(?i)(?:pale shape|recedes as|receding (?:figure|person|body|shape)|"
+    r"\bsilhouette\b|suggestion of (?:a )?(?:person|figure|body)|"
+    r"formless|blur(?:red)? (?:person|figure|body|shape))"
+)
 
 # Caption-wall tags → balloon / box instructions. Codes must not parse as slugs.
 LETTER_SHAPES: dict[str, str] = {
@@ -883,6 +889,10 @@ def parse_book(
         if re.search(r"costume only", raw_body, re.I) and "KEEP" not in (raw_body or "").upper():
             pw.append(
                 f"{slug}: 'costume only' tells Krea to drop face and body from the still"
+            )
+        if _MELT_PERSON.search(raw_body or ""):
+            pw.append(
+                f"{slug}: 'pale shape / recedes / silhouette' melts the body — write a complete person, full body, in focus"
             )
         pane_left = pane_right = ""
         pane_left_ids: list[str] = []

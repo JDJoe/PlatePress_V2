@@ -356,6 +356,16 @@ REFERENCE: use picture1 for costume only. Ignore background, pose, objects, and 
     assert any("no CHAR1" in w for w in p.warnings)
 
 
+def test_pale_shape_warns_body_melt():
+    wall = """
+p01_corner
+CHAR1 is Celine
+ACTION: Celine recedes as a pale shape on the corner.
+"""
+    r = parse_book(wall, "", CAST)
+    assert any("melts the body" in w for w in r.plates[0].warnings)
+
+
 def test_picture1_becomes_image1_and_warns():
     wall = """
 p04_ridge

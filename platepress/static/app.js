@@ -1099,13 +1099,15 @@ $("title").addEventListener("input", () => {
 });
 $("parse").onclick = async () => {
   await saveBookSilent();
+  const preserveSel = slugBoxes().length > 0;
+  const picked = selectedSlugs();
   const r = await j("/api/parse", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(parsePayload()),
   });
   book.plates = r.plates;
-  renderPreview(r.plates, r.warnings);
+  renderPreview(r.plates, r.warnings, preserveSel ? picked : undefined);
   if (r.notice) showBanner(r.notice, "warn");
   else if (!r.warnings.length) showBanner(`${r.plates.length} plates`, "ok");
 };

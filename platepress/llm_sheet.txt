@@ -27,7 +27,9 @@ MOTION: body, boots, pack, debris, the beat.
 - Captions are a second wall. Do not put narrator lines in the prompt wall. Balloon tags belong on the caption wall, not the prompt wall.
 - If a vessel is in the scene, write spacecraft. Never ship, spaceship, starship, boat, galleon, sails, or sailing ship.
 - Hide the eyes. “Not looking at the viewer” is too weak. Name shot size and camera position.
-- Working verb grammar: Caught in the instant of [verb].
+- Working verb grammar: Caught in the instant of [verb]. Named actor, named object, named contact. One beat. Do not stack three verbs.
+- Never describe a person as a shape, form, figure, mass, silhouette, blur, smear, suggestion, pale shape, or receding figure. “Recedes as a pale shape in the corner” melts them into a blob of body parts. Write: complete person, full body, correct anatomy, in focus, face readable.
+- CAMERA is empty air. “We stand at X looking at Y. The people in frame are A and B only.” Do not write “a figure at the edge,” “leans in from the far side,” or “someone over her shoulder” unless that someone is a named cast member in frame.
 - Metaphor examples, hung on a named object: spiderweb of black cells; wet silk into teal glass; stained glass; gold leaf over black glass; liquid silver; fire-silk; enamel.
 - Do not write balloon geometry in the prompt wall. Use caption-wall tags if the plate needs speech or a caption box.
 - Refer to characters by the lock names the user provides. Default to one named body per plate. Two names only when both bodies must appear.
