@@ -5,7 +5,7 @@ from __future__ import annotations
 INK_BOS = (
     "aethernouveau. Ink and watercolor by Moebius, thin black outlines, "
     "muted ochre, rust, teal and black. Cream paper is the print stock, not the sky. "
-    "Paint the whole plate: ground, horizon, and a real sky with weather and tone, "
+    "Fill the frame: ground, horizon, and a real sky with weather and tone, "
     "architecture or landscape behind the figures, no bare sheet, no white void."
 )
 INK_PANE = (

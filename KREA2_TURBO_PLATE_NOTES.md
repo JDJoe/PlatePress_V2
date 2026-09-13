@@ -13,7 +13,7 @@ Official Krea 2 order (use it inside the scene):
 Settings Ink (current):
 
 ```text
-aethernouveau. Ink and watercolor by Moebius, thin black outlines, muted ochre, rust, teal and black. Cream paper is the print stock, not the sky. vintage sci-fi comic art style, detailed linework, muted colors. Paint the whole plate: ground, horizon, and a real sky with weather and tone, architecture or landscape behind the figures, no bare sheet, no white void.
+aethernouveau. Ink and watercolor by Moebius, thin black outlines, muted ochre, rust, teal and black. Cream paper is the print stock, not the sky. vintage sci-fi comic art style, detailed linework, muted colors. Fill the frame: ground, horizon, and a real sky with weather and tone, architecture or landscape behind the figures, no bare sheet, no white void.
 ```
 
 Layout: one undivided plate.  

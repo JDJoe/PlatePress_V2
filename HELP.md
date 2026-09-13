@@ -67,6 +67,7 @@ MOTION: Body, boots, pack, debris, the beat.
 - Hide the eyes. `not looking at the viewer` is often ignored. Name shot size and where we stand.
 - Working verb: **caught in the instant of [verb]**. Named actor, named object, named contact.
 - Never describe a person as a shape, silhouette, smear, pale shape, or receding figure. That melts the body. Write a complete person, full body, in focus. CAMERA is empty air — “a figure at the edge” becomes a third person.
+- Do not write “paint the plate.” Krea paints food. Factory Style says **Fill the frame**.
 - Captions: same slugs, in the **Captions** box. Check the **letter** column so Generate paints them on the plate. Untagged lines become a bottom box (`CAP_B`). `CAP_T` is the top box. The plate does not grow.
 - The default book is the demo. It cannot be deleted from the UI.
 - **Parse** before generate. Slug checkboxes stay as you left them. Click a prompt (or Copy) to copy the full assembled text Comfy will get.
