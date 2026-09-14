@@ -276,7 +276,7 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
         <li><strong>Letter all</strong> / <strong>Letter this</strong> is optional extra drawing on a copy. The usual path is Generate with the letter column on.</li>
         <li><strong>Export pack</strong> writes lettered PNGs, <code>captions/</code>, <code>assembled_prompts.txt</code>, <code>seeds.json</code>.</li>
         <li>Reroll = new seed from the current Book wall (saves first), not the old file. New version.</li>
-        <li>Pick thumbs and <strong>Publish</strong> moves them to <code>01_BookName_Published</code> (then 02, …) under this book. <strong>Delete all plates</strong> does not touch those folders.</li>
+        <li>Pick thumbs and <strong>Publish</strong> moves them to <code>01_BookName_Published</code> with a snapshot of ink, LoRAs, story, and captions. <strong>Load published</strong> restores that snapshot. Missing UNET/LoRA names warn; the rest still loads. <strong>Delete all plates</strong> does not touch those folders.</li>
         <li>Delete one file, earlier versions, or all plates in this book (story/stills stay). Published folders stay.</li>
       </ul>
 
@@ -290,6 +290,6 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
       </ul>
     </section>
   </main>
-  <script src="/static/app.js?v=52"></script>
+  <script src="/static/app.js?v=53"></script>
 </body>
 </html>

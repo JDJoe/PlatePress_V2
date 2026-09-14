@@ -327,6 +327,85 @@ def book_dir(settings: dict[str, Any], book_id: str | None = None, create: bool 
     return d
 
 
+BOOK_GEN_KEYS = (
+    "style",
+    "layout",
+    "layout_text",
+    "tail",
+    "neg",
+    "unet_name",
+    "loras",
+    "lora_name",
+    "lora_strength",
+    "steps",
+    "cfg",
+    "sampler_name",
+    "scheduler",
+    "images_per_plate",
+)
+
+
+def _book_has_gen(book: dict[str, Any], key: str) -> bool:
+    v = (book or {}).get(key)
+    if v is None:
+        return False
+    if key == "loras":
+        return bool(v)
+    if isinstance(v, str):
+        return bool(v.strip())
+    return True
+
+
+def merge_book_settings(settings: dict[str, Any], book: dict[str, Any] | None) -> dict[str, Any]:
+    """Book generate settings overlay shared Settings. Blank ink still restores factory."""
+    out = dict(settings or {})
+    book = book or {}
+    for key in BOOK_GEN_KEYS:
+        if _book_has_gen(book, key):
+            out[key] = book[key]
+    return _restore_ink(out)
+
+
+def copy_gen_into_book(book: dict[str, Any], src: dict[str, Any]) -> dict[str, Any]:
+    for key in BOOK_GEN_KEYS:
+        if key in src and src[key] is not None:
+            book[key] = src[key]
+    return book
+
+
+def book_snapshot(book: dict[str, Any], gen: dict[str, Any] | None = None) -> dict[str, Any]:
+    gen = gen or {}
+    snap: dict[str, Any] = {}
+    for key in BOOK_GEN_KEYS:
+        snap[key] = book.get(key) if _book_has_gen(book, key) else gen.get(key)
+    snap["title"] = book.get("title")
+    snap["prompts_raw"] = book.get("prompts_raw") or ""
+    snap["captions_raw"] = book.get("captions_raw") or ""
+    snap["characters"] = book.get("characters") or []
+    snap["slug_opts"] = book.get("slug_opts") or {}
+    snap["workflow"] = book.get("workflow")
+    snap["ref_cutout_text"] = book.get("ref_cutout_text")
+    return snap
+
+
+def apply_snapshot(book: dict[str, Any], snap: dict[str, Any]) -> dict[str, Any]:
+    for key in BOOK_GEN_KEYS:
+        if key in snap:
+            book[key] = snap[key]
+    for key in (
+        "title",
+        "prompts_raw",
+        "captions_raw",
+        "characters",
+        "slug_opts",
+        "workflow",
+        "ref_cutout_text",
+    ):
+        if key in snap:
+            book[key] = snap[key]
+    return book
+
+
 def empty_book(book_id: str = "default") -> dict[str, Any]:
     return {
         "id": book_id,

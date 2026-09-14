@@ -36,8 +36,12 @@ from .parser import (
 )
 from .store import (
     PKG,
+    BOOK_GEN_KEYS,
     append_run,
+    apply_snapshot,
     book_dir,
+    book_snapshot,
+    copy_gen_into_book,
     delete_book_dir,
     empty_book,
     is_protected_book,
@@ -50,6 +54,7 @@ from .store import (
     load_seeds,
     load_settings,
     match_combo_name,
+    merge_book_settings,
     normalize_loras,
     new_id,
     portable_path,
@@ -298,8 +303,9 @@ def _parse(
     col_defaults: dict[str, bool] | None = None,
 ):
     chars = _chars(book)
-    style = book.get("style") or s["style"]
-    tail = book.get("tail") or s.get("tail") or ""
+    g = merge_book_settings(s, book)
+    style = g["style"]
+    tail = g.get("tail") or ""
     use_text_for, use_image_for, use_letter_for = _slug_opt_maps(book)
     col_defaults = col_defaults or {}
     return parse_book(
@@ -310,9 +316,9 @@ def _parse(
         tail=tail,
         n_pictures_for=picture_counts,
         cutout=False,
-        cutout_text=str(book.get("ref_cutout_text") or s.get("ref_cutout_text") or ""),
-        layout=s.get("layout") or "one",
-        layout_text=s.get("layout_text") or "",
+        cutout_text=str(book.get("ref_cutout_text") or g.get("ref_cutout_text") or ""),
+        layout=g.get("layout") or "one",
+        layout_text=g.get("layout_text") or "",
         use_text_for=use_text_for,
         use_image_for=use_image_for,
         use_letter_for=use_letter_for,
@@ -377,6 +383,7 @@ def _fail_job(job: dict[str, Any], err: str, tb: str = "") -> None:
 def _run_job(job: dict[str, Any]) -> None:
     s = _settings()
     book_id = job["book_id"]
+    s = merge_book_settings(s, load_book(s, book_id, create=False))
     d = book_dir(s, book_id)
     client = _client(s)
     ok, msg = client.ping()
@@ -505,11 +512,43 @@ def index() -> HTMLResponse:
     return HTMLResponse(html.read_text(encoding="utf-8"))
 
 
+def _settings_for_ui(s: dict[str, Any] | None = None) -> dict[str, Any]:
+    s = s or _settings()
+    book = load_book(s, create=False)
+    out = merge_book_settings(s, book)
+    out["examples"] = EXAMPLES
+    return out
+
+
+def _weight_warnings(s: dict[str, Any]) -> list[str]:
+    warnings: list[str] = []
+    unet = str(s.get("unet_name") or "").strip()
+    slots = normalize_loras(s)
+    try:
+        client = _client(s)
+        ok, msg = client.ping()
+        if not ok:
+            if unet or slots:
+                warnings.append(msg or "Comfy is down — could not check UNET/LoRA names")
+            return warnings
+        info = client.object_info()
+        unets = client.list_unets(info)
+        loras = client.list_loras(info)
+    except Exception as e:
+        warnings.append(f"could not check weights: {e}")
+        return warnings
+    if unet and unets and not match_combo_name(unet, unets):
+        warnings.append(f"UNET {unet!r} is not in Comfy — loaded the rest")
+    for slot in slots:
+        name = str(slot.get("name") or "").strip()
+        if name and loras and not match_combo_name(name, loras):
+            warnings.append(f"LoRA {name!r} is not in Comfy — loaded the rest")
+    return warnings
+
+
 @app.get("/api/settings")
 def get_settings() -> dict[str, Any]:
-    s = _settings()
-    s["examples"] = EXAMPLES
-    return s
+    return _settings_for_ui()
 
 
 @app.post("/api/settings")
@@ -517,11 +556,17 @@ def post_settings(body: dict[str, Any]) -> dict[str, Any]:
     s = _settings()
     body = dict(body)
     body.pop("examples", None)
-    s.update(body)
+    book = load_book(s)
+    for key in BOOK_GEN_KEYS:
+        if key in body:
+            book[key] = body[key]
+            s[key] = body[key]
+    for key, val in body.items():
+        if key not in BOOK_GEN_KEYS:
+            s[key] = val
     save_settings(s)
-    out = _settings()
-    out["examples"] = EXAMPLES
-    return out
+    save_book(s, book)
+    return _settings_for_ui()
 
 
 @app.get("/api/comfy/test")
@@ -723,6 +768,7 @@ def _split_units(want: list, all_plates: list) -> tuple[list[tuple], int, str]:
 def post_generate(body: dict[str, Any]) -> dict[str, Any]:
     s = _settings()
     book = load_book(s)
+    s = merge_book_settings(s, book)
     if isinstance(body.get("slug_opts"), dict):
         book["slug_opts"] = body["slug_opts"]
         save_book(s, book)
@@ -1440,6 +1486,32 @@ def _thumbs_for_book(s: dict[str, Any], bid: str) -> list[dict[str, Any]]:
     return thumbs
 
 
+def _published_sets(s: dict[str, Any], bid: str) -> list[dict[str, Any]]:
+    root = Path(s["output_root"])
+    d = root / bid
+    out: list[dict[str, Any]] = []
+    if not d.is_dir():
+        return out
+    for child in sorted(d.iterdir()):
+        if not child.is_dir() or not _is_published_dir(child):
+            continue
+        thumbs: list[dict[str, Any]] = []
+        for p in child.iterdir():
+            if p.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp"}:
+                continue
+            t = _thumb_from_file(p, root, bid)
+            t["published"] = child.name
+            thumbs.append(t)
+        thumbs.sort(key=_slug_sort_key)
+        out.append({
+            "name": child.name,
+            "n": len(thumbs),
+            "thumbs": thumbs,
+            "has_snapshot": (child / "snapshot.json").is_file(),
+        })
+    return out
+
+
 @app.get("/api/runs")
 def get_runs() -> dict[str, Any]:
     s = _settings()
@@ -1454,6 +1526,7 @@ def get_runs() -> dict[str, Any]:
     batches = _group_by_version(thumbs)
     ordered = sorted(thumbs, key=_slug_sort_key)
     names = [c.get("name") for c in (data.get("characters") or []) if c.get("name")]
+    published = _published_sets(s, current)
     book_block = {
         "id": current,
         "title": data.get("title") or current,
@@ -1463,6 +1536,7 @@ def get_runs() -> dict[str, Any]:
         "names": names,
         "thumbs": ordered,
         "batches": batches,
+        "published": published,
     }
     depth = _queue_depth()
     ok, msg = _client(s).ping()
@@ -1470,6 +1544,7 @@ def get_runs() -> dict[str, Any]:
         "runs": data.get("runs") or [],
         "thumbs": ordered,
         "batches": batches,
+        "published": published,
         "books": [book_block],
         "current": current,
         "queue_depth": depth,
@@ -1585,10 +1660,13 @@ def post_book_new(body: dict[str, Any] | None = None) -> dict[str, Any]:
     while bid in existing:
         bid = f"{base}_{n}"
         n += 1
+    prev = load_book(s, create=False)
+    src = merge_book_settings(s, prev)
     s["current_book"] = bid
     save_settings(s)
     book = empty_book(bid)
     book["title"] = title
+    copy_gen_into_book(book, src)
     save_book(s, book)
     return {"book": _book_payload(s, book), "books": list_books(s), "dir": str(book_dir(s))}
 
@@ -1673,7 +1751,44 @@ def post_publish(body: dict[str, Any]) -> dict[str, Any]:
     if not moved:
         dest_dir.rmdir()
         raise HTTPException(400, "none of those files are in plates/ or lettered/")
+    gen = merge_book_settings(s, book)
+    snap = book_snapshot(book, gen)
+    (dest_dir / "snapshot.json").write_text(json.dumps(snap, indent=2) + "\n", encoding="utf-8")
     return {"dir": str(dest_dir), "name": dest_dir.name, "moved": moved, "n": len(moved)}
+
+
+@app.post("/api/publish/load")
+def post_publish_load(body: dict[str, Any]) -> dict[str, Any]:
+    """Restore story + generate settings from a Published snapshot. Missing weights warn."""
+    raw = str(body.get("name") or "").strip()
+    if not raw:
+        raise HTTPException(400, "no published set")
+    s = _settings()
+    d = book_dir(s)
+    folder = d / Path(raw).name
+    if not folder.is_dir() or not _is_published_dir(folder) or not _contained(d, folder):
+        raise HTTPException(404, f"no published set {raw}")
+    snap_path = folder / "snapshot.json"
+    if not snap_path.is_file():
+        raise HTTPException(400, "this published set has no snapshot (made before settings were saved with Publish)")
+    try:
+        snap = json.loads(snap_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        raise HTTPException(400, f"bad snapshot: {e}") from e
+    if not isinstance(snap, dict):
+        raise HTTPException(400, "bad snapshot")
+    book = load_book(s)
+    apply_snapshot(book, snap)
+    save_book(s, book)
+    ui = _settings_for_ui(s)
+    warnings = _weight_warnings(ui)
+    return {
+        "book": _book_payload(s, book),
+        "settings": ui,
+        "warnings": warnings,
+        "name": folder.name,
+        "dir": str(d),
+    }
 
 
 @app.post("/api/plates/delete")

@@ -218,6 +218,8 @@ th input[type="checkbox"] { margin-right: 0.25rem; }
   margin: 0 0 0.3rem;
 }
 .version-block h4 .pick { margin-left: 0.75rem; }
+.version-block.published h4 { color: var(--accent); }
+.version-block.published h4 .act { margin-left: 0.75rem; }
 .thumbs img { width: 100%; display: block; background: #000; cursor: zoom-in; }
 #lightbox {
   display: none;

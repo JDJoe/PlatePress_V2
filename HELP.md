@@ -13,14 +13,14 @@ Also in the app: **Help** tab. The header always shows the open book.
 
 ## Settings
 
-Ink, layout line, closer, NEG, **UNET, LoRAs**, and stills-on/off are **shared Settings** (not stored on the book). Cast, story, plates, and the book’s API workflow belong to the open book.
+Ink, layout, closer, NEG, UNET, LoRAs, sampler, and images-per-plate belong to the **open book**. Comfy host, port, and model folders stay in shared Settings. Save settings writes ink and weights onto this book. **Publish** stores a snapshot in that folder. **Load published** puts it back; missing UNET/LoRA names warn and the rest still loads.
 
 - **Test connection** first.
 - **Style cards are the mode.** There is no separate Plate layout radio.
 - **Bos, one plate**: each slug is one image. If that slug contains `left pane:` / `right pane:`, only that plate splits.
 - **Two-pane comic**: consecutive slugs share one image (p1 left, p2 right). Do not write “Left pane” yourself. Each pane is its own scene as written.
 - Click a card to fill ink, layout line, and matching negatives, and save Settings. World closer stays empty on Bos; two-pane fills the pane closer. The boxes stay editable.
-- **Ink** and **Layout line** are prepended to every plate. They are shared Settings, not per-book. An empty Ink box is refused and the factory style is put back — switching books will not wipe it.
+- **Ink** and **Layout line** are prepended to every plate. They live on this book. An empty Ink box is refused and the factory style is put back.
 - **World closer** is empty on Bos. Two-pane fills “each pane is its own scene…”. Prepended only if that box has text.
 - **NEG** is the negative prompt. It is written only if the API graph has a CLIP negative node. The shipped default keeps its own diptych negative.
 - Stills and locks are **Text** / **Image** on the Book table, not Settings. **Cutout** is per character on Cast.
@@ -110,7 +110,7 @@ Metaphor examples: spiderweb of black cells; wet silk into teal glass; stained g
 - **Letter all** / **Letter this** is optional extra drawing on a copy. The usual path is Generate with the letter column on.
 - **Export pack** writes lettered PNGs, `captions/`, `assembled_prompts.txt`, `seeds.json`.
 - Reroll = new seed from the current Book wall (saves first), not the old file. New version.
-- **Publish**: pick thumbs (or a whole version), then Publish. Files move to `01_BookName_Published` under this book (then `02_…`). They leave Queue. **Delete all plates** does not touch published folders.
+- **Publish**: pick thumbs (or a whole version), then Publish. Files move to `01_BookName_Published` with a snapshot of ink, LoRAs, story, and captions. **Load published** restores that snapshot. **Delete all plates** does not touch published folders.
 - Delete one file, earlier versions, or all plates in this book (story/stills stay). Published folders stay.
 - Settings → Books: new book, open, delete whole folder (not default).
 

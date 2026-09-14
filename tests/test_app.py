@@ -458,6 +458,47 @@ def test_delete_batch_does_not_rename_book(tmp_path, monkeypatch):
     assert (plates / f"{bid}_v02_p001_cut.png").exists()
 
 
+def test_settings_stick_to_book_and_published_snapshot(tmp_path, monkeypatch):
+    from platepress import store
+    from platepress.defaults import STYLE
+
+    monkeypatch.setattr(store, "DEFAULT_SETTINGS_PATH", tmp_path / "settings.json")
+    s = store.default_settings()
+    s["output_root"] = str(tmp_path / "books")
+    store.save_settings(s, tmp_path / "settings.json")
+    client = TestClient(app)
+    r = client.post("/api/book/new", json={"title": "Alpha", "id": "alpha"})
+    assert r.status_code == 200
+    r = client.post("/api/settings", json={"style": "INK FOR ALPHA", "neg": "no boats"})
+    assert r.status_code == 200
+    assert r.json()["style"] == "INK FOR ALPHA"
+    book = json.loads((tmp_path / "books" / "alpha" / "book.json").read_text(encoding="utf-8"))
+    assert book["style"] == "INK FOR ALPHA"
+    r = client.post("/api/book/new", json={"title": "Beta", "id": "beta"})
+    assert r.status_code == 200
+    r = client.post("/api/settings", json={"style": "INK FOR BETA"})
+    assert r.json()["style"] == "INK FOR BETA"
+    r = client.post("/api/book/open", json={"id": "alpha"})
+    assert r.status_code == 200
+    r = client.get("/api/settings")
+    assert r.json()["style"] == "INK FOR ALPHA"
+    plates = tmp_path / "books" / "alpha" / "plates"
+    plates.mkdir(parents=True, exist_ok=True)
+    keep = plates / "P01-womb-v01-alpha.png"
+    keep.write_bytes(b"keep")
+    r = client.post("/api/publish", json={"paths": [str(keep)]})
+    assert r.status_code == 200
+    pub = r.json()["name"]
+    snap = json.loads((tmp_path / "books" / "alpha" / pub / "snapshot.json").read_text(encoding="utf-8"))
+    assert snap["style"] == "INK FOR ALPHA"
+    client.post("/api/settings", json={"style": "WIPED"})
+    r = client.post("/api/publish/load", json={"name": pub})
+    assert r.status_code == 200
+    assert r.json()["settings"]["style"] == "INK FOR ALPHA"
+    assert r.json()["book"]["style"] == "INK FOR ALPHA"
+    assert STYLE not in (r.json()["settings"]["style"],)
+
+
 def test_publish_moves_and_survives_delete_all(tmp_path, monkeypatch):
     from platepress import store
     from platepress.app import app as flaskish

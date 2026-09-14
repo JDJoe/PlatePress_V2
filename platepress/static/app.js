@@ -710,19 +710,22 @@ function thumbFigure(t, names) {
     ? `<button class="act ghost" data-lock="${seed}">Lock seed</button>`
     : "";
   const letteredMark = t.lettered ? " · lettered" : "";
-  const letterBtn = t.lettered
+  const letterBtn = t.lettered || t.published
     ? ""
     : `<button class="act ghost" data-letter="${slug}">Letter this</button>`;
+  const pick = t.published
+    ? ""
+    : `<label class="pick"><input type="checkbox" data-publish-path="${t.path}" /> pick</label>`;
   fig.innerHTML = `
-    <label class="pick"><input type="checkbox" data-publish-path="${t.path}" /> pick</label>
+    ${pick}
     <img src="${t.url}" alt="${t.name}" data-full="${t.url}" data-full-name="${t.name || ""}" />
     <figcaption>${t.name || ""}${letteredMark}</figcaption>
     <select data-char>${opts}</select>
-    ${lockBtn}
-    <button class="act ghost" data-reroll="${slug}">Reroll</button>
+    ${t.published ? "" : lockBtn}
+    ${t.published ? "" : `<button class="act ghost" data-reroll="${slug}">Reroll</button>`}
     <button class="act ghost" data-asref="${t.path}">Use as ref</button>
     ${letterBtn}
-    <button class="act ghost" data-rmfile="${encodeURIComponent(t.path)}" data-bookid="${bid}">Delete file</button>
+    ${t.published ? "" : `<button class="act ghost" data-rmfile="${encodeURIComponent(t.path)}" data-bookid="${bid}">Delete file</button>`}
   `;
   return fig;
 }
@@ -774,7 +777,57 @@ async function refreshRuns() {
       sec.appendChild(block);
     });
   }
+  (current.published || r.published || []).forEach((pub) => {
+    const block = document.createElement("section");
+    block.className = "version-block published";
+    const vh = document.createElement("h4");
+    vh.textContent = [pub.name, pub.n].filter((x) => x !== "" && x != null).join(" · ");
+    if (pub.has_snapshot) {
+      const loadBtn = document.createElement("button");
+      loadBtn.type = "button";
+      loadBtn.className = "act ghost";
+      loadBtn.dataset.loadPublished = pub.name;
+      loadBtn.textContent = "Load published";
+      vh.appendChild(loadBtn);
+    } else {
+      const miss = document.createElement("span");
+      miss.className = "tiny";
+      miss.textContent = " (no snapshot)";
+      vh.appendChild(miss);
+    }
+    block.appendChild(vh);
+    const grid = document.createElement("div");
+    grid.className = "thumbs";
+    (pub.thumbs || []).forEach((t) => grid.appendChild(thumbFigure(t, names)));
+    block.appendChild(grid);
+    sec.appendChild(block);
+  });
   box.appendChild(sec);
+  box.querySelectorAll("[data-load-published]").forEach((el) => {
+    el.addEventListener("click", async () => {
+      if (!confirm("Load “" + el.dataset.loadPublished + "”?\nInk, LoRAs, story, and captions go back to that publish. Plates stay in that folder.")) return;
+      try {
+        const r = await j("/api/publish/load", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: el.dataset.loadPublished }),
+        });
+        book = r.book;
+        if (r.settings) fillSettings(r.settings);
+        $("title").value = book.title || "";
+        $("prompts_raw").value = book.prompts_raw || "";
+        $("captions_raw").value = book.captions_raw || "";
+        await fillWorkflowSelect();
+        renderCast();
+        renderPreview(book.plates || [], []);
+        const warn = (r.warnings || []).join(" · ");
+        showBanner(
+          warn ? ("loaded " + r.name + " · " + warn) : ("loaded " + r.name),
+          warn ? "warn" : "ok"
+        );
+      } catch (e) { showBanner(e.message, "err"); }
+    });
+  });
   box.querySelectorAll("[data-pick-version]").forEach((el) => {
     el.addEventListener("change", () => {
       const block = el.closest(".version-block");
@@ -1070,7 +1123,7 @@ $("save-settings").onclick = async () => {
     body: JSON.stringify(readSettings()),
   });
   fillSettings(settings);
-  showBanner("settings saved", "ok");
+  showBanner("settings saved on this book", "ok");
   loadBooks();
 };
 $("test-comfy").onclick = async () => {
@@ -1279,8 +1332,8 @@ if ($("copy-plate-template")) {
 
 (async function init() {
   try {
-    fillSettings(await j("/api/settings"));
     await loadBook();
+    fillSettings(await j("/api/settings"));
     await loadBooks();
     const ping = await j("/api/comfy/test");
     showBanner(ping.message, ping.ok ? "ok" : "err");

@@ -34,7 +34,7 @@ Books live as folders under `platepress/books/<id>/` (JSON, walls, stills, plate
 
 ## Settings (shared)
 
-Ink, closer, negatives, **UNET, LoRAs**, and Comfy host are **shared Settings**. They are not stored on the book. Cast, story, plates, per-slug Text/Image, and the book’s API workflow stay in that book’s folder. **World closer** is empty on Bos; the two-pane card fills the pane closer.
+Ink, closer, NEG, UNET, LoRAs, and sampler live on the **open book**. Comfy host, port, and model folders stay in shared Settings. **Publish** writes a snapshot next to the plates; **Load published** restores it (missing UNET/LoRA names warn). Cast, story, plates, per-slug Text/Image, and the book’s API workflow stay in that book’s folder. **World closer** is empty on Bos; the two-pane card fills the pane closer.
 
 **Style cards are the mode.** Click one; the boxes stay editable.
 
