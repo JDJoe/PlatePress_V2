@@ -223,7 +223,7 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
       <ul>
         <li>Cast is per book. Five books can all have ANDROID; they are not the same person.</li>
         <li>Header plus Cast, Book, Queue, and Settings headings show the open book.</li>
-        <li>First card is <code>CHAR1</code> / <code>PILOT1</code>, second is <code>CHAR2</code>. The name on the card is for you; <code>Anna</code> in the wall is writer text. Do not write <code>CHARACTER1</code> — Krea paints a person.</li>
+        <li>Cast <strong>Name</strong> is the wall token (<code>ROOM</code>, <code>ANYTHING</code>, <code>CHAR1</code>). Text on: the word becomes the lock. <strong>Image</strong> on: stills are <code>image1</code>, <code>image2</code>, <code>image3</code> in token order. <code>CHAR1</code> / <code>PILOT1</code> still mean first card. <code>Anna</code> after <code>is</code> is writer text. Do not write <code>CHARACTER1</code>.</li>
         <li>Lock is face + suit + pack. Per-slug Text on Book inserts it. Per-slug Image sends the still. Cutout is per character on this page and is sent when Image is on.</li>
         <li>A name like <code>PATRON</code> only works if that card exists on this book.</li>
         <li>0–3 local stills per card. One body. Frontal portraits make the figure find the camera.</li>
@@ -245,7 +245,7 @@ GAZE: Eyes on a named thing in the frame, never the viewer.
 HANDS: What both hands are doing.
 MOTION: Body, boots, pack, debris, the beat.</pre>
       <ul>
-        <li>Slug on its own line. Cast name can be anything. Wall <code>CHAR1</code> / <code>PILOT1</code> is the first card. <strong>Text</strong>: token becomes the lock, <code>is PingPong</code> stays. <strong>Image</strong>: still is <code>image1</code>. <strong>Both</strong>: lock in the prompt and the still. Write KEEP yourself.</li>
+        <li>Slug on its own line. Cast name is the token (<code>ANYTHING</code>, <code>ROOM</code>, <code>CHAR1</code>). <strong>Text</strong>: token becomes the lock, <code>is Anna</code> stays. <strong>Image</strong>: stills are <code>image1</code>, <code>image2</code>, <code>image3</code> in token order. <strong>Both</strong>: lock plus those stills. Write KEEP / REFERENCE yourself.</li>
         <li>Do not paste ink, closer, sampler, or <code>aethernouveau</code> here. The app prepends ink and the layout line (and closer if that box is not empty).</li>
         <li>Hide the eyes. Working verb: <strong>caught in the instant of [verb]</strong>. Never call a person a pale shape, silhouette, or receding figure — Krea melts the body. CAMERA is empty air, not a third person at the edge.</li>
         <li>Captions go to Comfy when the <strong>letter</strong> column is on. Untagged lines become a bottom box on the plate (<code>CAP_B</code>). <code>CAP_T</code> is the top box. Place a balloon: <code>NS_6: line</code> — grid <code>1 2 / 3 4 / 5 6</code>. The plate size does not grow.</li>
@@ -262,8 +262,8 @@ MOTION: Body, boots, pack, debris, the beat.</pre>
 
       <h3>Refs</h3>
       <ul>
-        <li>Per slug <strong>Image</strong> column. <code>CHAR1</code> → <code>image1</code>, <code>CHAR2</code> → <code>image2</code>.</li>
-        <li>Text off + Image on: the wall reads <code>image1 is Anna</code>. Write KEEP/REFERENCE yourself if you want it.</li>
+        <li>Per slug <strong>Image</strong> column. First token → <code>image1</code>, second → <code>image2</code>, third → <code>image3</code>.</li>
+        <li>Text off + Image on: the wall still says <code>CHAR1 is Anna</code> or <code>ANYTHING is Anna</code>. Stills are <code>image1</code>…<code>image3</code>. Write KEEP/REFERENCE yourself.</li>
         <li>Frontal “look at me” stills clone that pose. Prefer a full-body costume still.</li>
         <li>Cutout is per Cast card. Prefer writing REFERENCE on the wall.</li>
       </ul>

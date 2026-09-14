@@ -234,6 +234,40 @@ def parse_character_decls(body: str, character_names: list[str]) -> list[tuple[i
     return sorted(slots.items())
 
 
+def _writer_aliases(body: str) -> set[str]:
+    """Names after CHAR1 is Celine — writer text, not a Cast token to expand."""
+    return {
+        m.group(1)
+        for m in re.finditer(
+            r"(?i)\b(?:CHARACTER|PILOT|CHAR)\d+\s+(?:is|=)\s+([A-Za-z][A-Za-z0-9_]*)",
+            body or "",
+        )
+    }
+
+
+def expand_named_tokens(
+    body: str,
+    by_name: dict[str, Character],
+    skip: set[str] | None = None,
+) -> str:
+    """Replace a Cast name (ROOM, ANDROID) with that card's lock. Leave 'is the suite'."""
+    skip = {s.lower() for s in (skip or set())}
+    out = body or ""
+    for name in sorted(by_name, key=len, reverse=True):
+        if not name or _SLOT_EXACT.match(name) or name.lower() in skip:
+            continue
+        lock = (by_name[name].lock_text or "").strip().rstrip(".,; ")
+        if not lock:
+            continue
+        out = re.sub(r"\{" + re.escape(name) + r"\}", lock, out)
+        out = re.sub(
+            r"(?<![A-Za-z0-9_])" + re.escape(name) + r"(?![A-Za-z0-9_])",
+            lock,
+            out,
+        )
+    return out
+
+
 def expand_character_decls(body: str, by_name: dict[str, Character]) -> str:
     """Replace CHAR1 with that slot's Cast lock. Leave 'is Anna and …' as written."""
     names = list(by_name)
@@ -854,18 +888,21 @@ def parse_book(
         use_image = _slug_flag(use_image_for, slug, image_default)
         use_letter = _slug_flag(use_letter_for, slug, letter_default)
         decls = parse_character_decls(body, names)
-        if decls:
-            hits = [n for _, n in decls] if (use_text or use_image) else []
+        aliases = _writer_aliases(body)
+        name_hits = [
+            n for n in _character_hits(slug + " " + body, names) if n.lower() not in {a.lower() for a in aliases}
+        ]
+        slot_names = [n for _, n in decls]
+        extra = [n for n in name_hits if n not in slot_names]
+        if decls or ((use_text or use_image) and name_hits):
+            hits = (slot_names + extra) if (use_text or use_image) else []
             named = list(hits)
-            if use_text:
-                body = expand_character_decls(body, by_name)
             scene = body
+            if use_text:
+                if decls:
+                    scene = expand_character_decls(scene, by_name)
+                scene = expand_named_tokens(scene, by_name, aliases)
             locks_for_assemble = []
-        elif use_text:
-            hits = _character_hits(slug + " " + body, names)
-            named = list(hits)
-            scene = _strip_character_tokens(body, name_set)
-            locks_for_assemble = [by_name[n].lock_text for n in hits if n in by_name]
         else:
             hits = []
             named = []
@@ -905,19 +942,18 @@ def parse_book(
             pre = re.split(r"left\s*pane", body, maxsplit=1, flags=re.I)[0]
             pane_left_ids = _character_hits(pre + " " + raw_panes[0], names)
             pane_right_ids = _character_hits(raw_panes[1], names)
+            left_src, right_src = raw_panes[0], raw_panes[1]
+            if use_text:
+                if decls:
+                    left_src = expand_character_decls(left_src, by_name)
+                    right_src = expand_character_decls(right_src, by_name)
+                left_src = expand_named_tokens(left_src, by_name, aliases)
+                right_src = expand_named_tokens(right_src, by_name, aliases)
             pane_left = _image_slots(
-                _spacecraft(
-                    _canon_slot_tokens(
-                        re.sub(r"\s+", " ", _strip_character_tokens(raw_panes[0], name_set)).strip()
-                    )
-                )
+                _spacecraft(_canon_slot_tokens(re.sub(r"\s+", " ", left_src).strip()))
             )
             pane_right = _image_slots(
-                _spacecraft(
-                    _canon_slot_tokens(
-                        re.sub(r"\s+", " ", _strip_character_tokens(raw_panes[1], name_set)).strip()
-                    )
-                )
+                _spacecraft(_canon_slot_tokens(re.sub(r"\s+", " ", right_src).strip()))
             )
         risky = len(hits) >= 2
         if risky:

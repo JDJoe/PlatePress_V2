@@ -637,6 +637,30 @@ Celine turns a brass dial.
     assert "A blond 30 year old is Celine" in p.scene_text
 
 
+def test_cast_name_is_a_wall_token_like_char1():
+    cast = [
+        Character(id="c", name="CHAR1", lock_text="A blond 30 year old"),
+        Character(id="r", name="ROOM", lock_text="a small hotel room, brass lamp, cream wallpaper"),
+    ]
+    wall = """
+p001_bed
+CHAR1 is Celine
+ROOM is the suite
+Celine turns a brass dial.
+"""
+    r = parse_book(wall, "", cast, use_text_for={"p001_bed": True})
+    p = r.plates[0]
+    assert "ROOM" not in p.scene_text
+    assert "CHAR1" not in p.scene_text
+    assert "A blond 30 year old is Celine" in p.scene_text
+    assert "a small hotel room, brass lamp, cream wallpaper is the suite" in p.scene_text
+    assert "Celine turns a brass dial" in p.scene_text
+    assert p.named_ids == ["CHAR1", "ROOM"]
+    off = parse_book(wall, "", cast, use_text_for={"p001_bed": False})
+    assert "ROOM is the suite" in off.plates[0].scene_text
+    assert "CHAR1 is Celine" in off.plates[0].scene_text
+
+
 def test_character1_is_cast_slot_one_alias_is_writer_text():
     wall = """
 p01_heist
