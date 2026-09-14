@@ -714,6 +714,7 @@ function thumbFigure(t, names) {
     ? ""
     : `<button class="act ghost" data-letter="${slug}">Letter this</button>`;
   fig.innerHTML = `
+    <label class="pick"><input type="checkbox" data-publish-path="${t.path}" /> pick</label>
     <img src="${t.url}" alt="${t.name}" data-full="${t.url}" data-full-name="${t.name || ""}" />
     <figcaption>${t.name || ""}${letteredMark}</figcaption>
     <select data-char>${opts}</select>
@@ -761,6 +762,10 @@ async function refreshRuns() {
       const vh = document.createElement("h4");
       const vn = b.n != null ? b.n : (b.thumbs || []).length;
       vh.textContent = [b.label, vn].filter((x) => x !== "" && x != null).join(" · ");
+      const pickVer = document.createElement("label");
+      pickVer.className = "pick tiny";
+      pickVer.innerHTML = `<input type="checkbox" data-pick-version /> pick this version`;
+      vh.appendChild(pickVer);
       block.appendChild(vh);
       const grid = document.createElement("div");
       grid.className = "thumbs";
@@ -770,6 +775,15 @@ async function refreshRuns() {
     });
   }
   box.appendChild(sec);
+  box.querySelectorAll("[data-pick-version]").forEach((el) => {
+    el.addEventListener("change", () => {
+      const block = el.closest(".version-block");
+      if (!block) return;
+      block.querySelectorAll("[data-publish-path]").forEach((cb) => {
+        cb.checked = el.checked;
+      });
+    });
+  });
   box.querySelectorAll(".thumbs img[data-full]").forEach((el) => {
     el.addEventListener("click", (ev) => {
       ev.preventDefault();
@@ -884,6 +898,8 @@ async function loadBooks() {
       $("title").value = book.title || "";
       $("prompts_raw").value = book.prompts_raw || "";
       $("captions_raw").value = book.captions_raw || "";
+      fillSettings(await j("/api/settings"));
+      await fillWorkflowSelect();
       renderCast();
       renderPreview(book.plates || [], []);
       showBanner("opened " + el.dataset.openbook, "ok");
@@ -903,6 +919,8 @@ async function loadBooks() {
         $("title").value = book.title || "";
         $("prompts_raw").value = book.prompts_raw || "";
         $("captions_raw").value = book.captions_raw || "";
+        fillSettings(await j("/api/settings"));
+        await fillWorkflowSelect();
         renderCast();
         renderPreview(book.plates || [], []);
         showBanner("book deleted", "ok");
@@ -1163,6 +1181,25 @@ $("open-folder").onclick = async () => {
   });
   showBanner(r.dir, r.ok ? "ok" : "err");
 };
+$("publish").onclick = async () => {
+  const paths = [...document.querySelectorAll("#thumbs [data-publish-path]:checked")].map(
+    (el) => el.getAttribute("data-publish-path")
+  ).filter(Boolean);
+  if (!paths.length) {
+    showBanner("pick plates to publish", "warn");
+    return;
+  }
+  if (!confirm(`Publish ${paths.length} selected file(s) into a new 01_BookName_Published folder?\nThey leave Queue. Delete all plates will not touch that folder.`)) return;
+  try {
+    const r = await j("/api/publish", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paths }),
+    });
+    showBanner(`published ${r.n} → ${r.name}`, "ok");
+    refreshRuns();
+  } catch (e) { showBanner(e.message, "err"); }
+};
 $("del-earlier").onclick = async () => {
   if (!confirm("Delete earlier versions and keep only the latest generate?\nThis cannot be undone.")) return;
   try {
@@ -1200,6 +1237,8 @@ async function startNewBook() {
     $("title").value = book.title || "";
     $("prompts_raw").value = "";
     $("captions_raw").value = "";
+    fillSettings(await j("/api/settings"));
+    await fillWorkflowSelect();
     renderCast();
     renderPreview([], []);
     showBanner("new book " + ((r.book && r.book.id) || ""), "ok");

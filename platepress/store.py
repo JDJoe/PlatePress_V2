@@ -263,6 +263,17 @@ def default_settings() -> dict[str, Any]:
     }
 
 
+def _restore_ink(s: dict[str, Any]) -> dict[str, Any]:
+    """Blank Ink/layout/NEG is never valid. Empty Style box must not wipe Settings."""
+    if not str(s.get("style") or "").strip():
+        s["style"] = STYLE
+    if not str(s.get("layout_text") or "").strip():
+        s["layout_text"] = LAYOUT_ONE if (s.get("layout") or "one") != "split" else LAYOUT_SPLIT
+    if not str(s.get("neg") or "").strip():
+        s["neg"] = NEG
+    return s
+
+
 def load_settings(path: Path | None = None) -> dict[str, Any]:
     path = path or DEFAULT_SETTINGS_PATH
     base = default_settings()
@@ -272,6 +283,7 @@ def load_settings(path: Path | None = None) -> dict[str, Any]:
         except json.JSONDecodeError:
             pass
     s = migrate_loras(migrate_layout(migrate_default_workflow(base)))
+    s = _restore_ink(s)
     if not str(s.get("ref_cutout_text") or "").strip():
         s["ref_cutout_text"] = REF_CUTOUT
     for key in _PATH_KEYS:
@@ -289,6 +301,7 @@ def save_settings(data: dict[str, Any], path: Path | None = None) -> None:
     merged = default_settings()
     merged.update(data)
     merged = migrate_loras(migrate_default_workflow(merged))
+    merged = _restore_ink(merged)
     for key in _PATH_KEYS:
         if merged.get(key):
             merged[key] = portable_path(

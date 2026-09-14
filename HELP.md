@@ -20,7 +20,7 @@ Ink, layout line, closer, NEG, **UNET, LoRAs**, and stills-on/off are **shared S
 - **Bos, one plate**: each slug is one image. If that slug contains `left pane:` / `right pane:`, only that plate splits.
 - **Two-pane comic**: consecutive slugs share one image (p1 left, p2 right). Do not write “Left pane” yourself. Each pane is its own scene as written.
 - Click a card to fill ink, layout line, and matching negatives, and save Settings. World closer stays empty on Bos; two-pane fills the pane closer. The boxes stay editable.
-- **Ink** and **Layout line** are prepended to every plate.
+- **Ink** and **Layout line** are prepended to every plate. They are shared Settings, not per-book. An empty Ink box is refused and the factory style is put back — switching books will not wipe it.
 - **World closer** is empty on Bos. Two-pane fills “each pane is its own scene…”. Prepended only if that box has text.
 - **NEG** is the negative prompt. It is written only if the API graph has a CLIP negative node. The shipped default keeps its own diptych negative.
 - Stills and locks are **Text** / **Image** on the Book table, not Settings. **Cutout** is per character on Cast.
@@ -110,7 +110,8 @@ Metaphor examples: spiderweb of black cells; wet silk into teal glass; stained g
 - **Letter all** / **Letter this** is optional extra drawing on a copy. The usual path is Generate with the letter column on.
 - **Export pack** writes lettered PNGs, `captions/`, `assembled_prompts.txt`, `seeds.json`.
 - Reroll = new seed from the current Book wall (saves first), not the old file. New version.
-- Delete one file, earlier versions, or all plates in this book (story/stills stay).
+- **Publish**: pick thumbs (or a whole version), then Publish. Files move to `01_BookName_Published` under this book (then `02_…`). They leave Queue. **Delete all plates** does not touch published folders.
+- Delete one file, earlier versions, or all plates in this book (story/stills stay). Published folders stay.
 - Settings → Books: new book, open, delete whole folder (not default).
 
 ## House style

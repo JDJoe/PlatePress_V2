@@ -225,6 +225,33 @@ def _plate_slug_key(name: str) -> tuple[str, ...]:
     return (pad_slug(_plate_slug(name)),)
 
 
+_PUBLISHED_DIR = re.compile(r"^(\d{2})_.+_Published$", re.I)
+
+
+def _is_published_dir(p: Path) -> bool:
+    return bool(_PUBLISHED_DIR.match(p.name or ""))
+
+
+def _is_published_path(book_root: Path, p: Path) -> bool:
+    try:
+        rel = p.resolve().relative_to(book_root.resolve())
+    except ValueError:
+        return False
+    return bool(rel.parts) and _is_published_dir(book_root / rel.parts[0])
+
+
+def _next_published_dir(book_root: Path, book_id: str, title: str = "") -> Path:
+    n = 0
+    if book_root.is_dir():
+        for child in book_root.iterdir():
+            if child.is_dir():
+                m = _PUBLISHED_DIR.match(child.name)
+                if m:
+                    n = max(n, int(m.group(1)))
+    token = _safe_token(title or book_id)
+    return book_root / f"{n + 1:02d}_{token}_Published"
+
+
 def _done_slug_keys(d: Path) -> set[tuple[str, ...]]:
     found: set[tuple[str, ...]] = set()
     plates = d / "plates"
@@ -593,6 +620,8 @@ def post_book(body: dict[str, Any]) -> dict[str, Any]:
                 book[k] = portable_path(raw, follow_symlinks=False)
             else:
                 book[k] = None
+        elif k in ("style", "tail") and not str(body.get(k) or "").strip():
+            book[k] = None
         else:
             book[k] = body[k]
     if "characters" in body:
@@ -1608,6 +1637,45 @@ def post_book_delete(body: dict[str, Any]) -> dict[str, Any]:
     return {"books": list_books(s), "current": s.get("current_book"), "book": _book_payload(s, load_book(s))}
 
 
+@app.post("/api/publish")
+def post_publish(body: dict[str, Any]) -> dict[str, Any]:
+    """Move selected Queue files into 01_BookName_Published. Delete-all does not touch it."""
+    paths = [str(p) for p in (body.get("paths") or []) if str(p).strip()]
+    if not paths:
+        raise HTTPException(400, "no files selected")
+    s = _settings()
+    d = book_dir(s)
+    bid = d.name
+    book = load_book(s, bid, create=False)
+    dest_dir = _next_published_dir(d, bid, str(book.get("title") or bid))
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    allowed_parents = {(d / "plates").resolve(), (d / "lettered").resolve()}
+    moved: list[str] = []
+    for raw in paths:
+        src = Path(raw)
+        if not _contained(d, src) or not src.is_file():
+            continue
+        if src.parent.resolve() not in allowed_parents:
+            continue
+        if _is_published_path(d, src):
+            continue
+        dest = dest_dir / src.name
+        if dest.exists():
+            k = 2
+            while True:
+                cand = dest_dir / f"{dest.stem}-{k}{dest.suffix}"
+                if not cand.exists():
+                    dest = cand
+                    break
+                k += 1
+        src.rename(dest)
+        moved.append(dest.name)
+    if not moved:
+        dest_dir.rmdir()
+        raise HTTPException(400, "none of those files are in plates/ or lettered/")
+    return {"dir": str(dest_dir), "name": dest_dir.name, "moved": moved, "n": len(moved)}
+
+
 @app.post("/api/plates/delete")
 def post_plates_delete(body: dict[str, Any]) -> dict[str, Any]:
     if not body.get("confirm"):
@@ -1671,6 +1739,8 @@ def post_plates_delete(body: dict[str, Any]) -> dict[str, Any]:
     stems: set[str] = set()
     for p in targets:
         if not _contained(d, p):
+            continue
+        if _is_published_path(d, p):
             continue
         if not p.exists() or not p.is_file():
             continue

@@ -51,6 +51,24 @@ def test_ensure_demo_book_seeds_missing_default(tmp_path):
     assert (dest / "prompts_raw.txt").read_text(encoding="utf-8") == "keep-me"
 
 
+def test_blank_style_does_not_wipe_ink(tmp_path, monkeypatch):
+    from platepress import store
+    from platepress.defaults import STYLE
+
+    monkeypatch.setattr(store, "DEFAULT_SETTINGS_PATH", tmp_path / "settings.json")
+    s = store.default_settings()
+    s["output_root"] = str(tmp_path / "books")
+    s["style"] = "   "
+    store.save_settings(s, tmp_path / "settings.json")
+    loaded = store.load_settings(tmp_path / "settings.json")
+    assert loaded["style"].strip() == STYLE.strip()
+    client = TestClient(app)
+    r = client.post("/api/settings", json={"style": "", "layout_text": "", "neg": ""})
+    assert r.status_code == 200
+    assert r.json()["style"].strip() == STYLE.strip()
+    assert "aethernouveau" in r.json()["style"]
+
+
 def test_index_and_parse_t1(tmp_path, monkeypatch):
     from platepress import store
 
@@ -438,6 +456,42 @@ def test_delete_batch_does_not_rename_book(tmp_path, monkeypatch):
     assert bid in ids
     assert not (plates / f"{bid}_v01_p001_cut.png").exists()
     assert (plates / f"{bid}_v02_p001_cut.png").exists()
+
+
+def test_publish_moves_and_survives_delete_all(tmp_path, monkeypatch):
+    from platepress import store
+    from platepress.app import app as flaskish
+
+    monkeypatch.setattr(store, "DEFAULT_SETTINGS_PATH", tmp_path / "settings.json")
+    s = store.default_settings()
+    s["output_root"] = str(tmp_path / "books")
+    store.save_settings(s, tmp_path / "settings.json")
+    client = TestClient(flaskish)
+    r = client.post("/api/book/new", json={"title": "Four", "id": "four_"})
+    assert r.status_code == 200
+    bid = r.json()["book"]["id"]
+    plates = tmp_path / "books" / bid / "plates"
+    plates.mkdir(parents=True, exist_ok=True)
+    keep = plates / "P01-womb-v01-four.png"
+    junk = plates / "P02-uncurl-v01-four.png"
+    keep.write_bytes(b"keep")
+    junk.write_bytes(b"junk")
+    r = client.post("/api/publish", json={"paths": [str(keep)]})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["n"] == 1
+    assert body["name"].startswith("01_")
+    assert body["name"].endswith("_Published")
+    pub = tmp_path / "books" / bid / body["name"]
+    assert (pub / "P01-womb-v01-four.png").exists()
+    assert not keep.exists()
+    assert junk.exists()
+    r = client.post("/api/plates/delete", json={"confirm": True, "scope": "all", "book_id": bid})
+    assert r.status_code == 200
+    assert not junk.exists()
+    assert (pub / "P01-womb-v01-four.png").exists()
+    r = client.post("/api/publish", json={"paths": [str(junk)]})
+    assert r.status_code == 400
 
 
 def test_next_cast_name_is_character_slot():
