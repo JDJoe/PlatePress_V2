@@ -955,14 +955,19 @@ _SLUG_IN_NAME = re.compile(
 _CANON_SLUG = r"(?:p|t)\d{3,}_[A-Za-z0-9]+(?:_(?!p\d+_|t\d+_|\d+$)[A-Za-z0-9]+)*"
 # P01-wreck-v01-book  /  P01-cargo-P02-claim-v01-book-2
 _NEW_STEM_TAIL = re.compile(
-    r"-v(\d{2,})-([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)(?:-(\d{1,9}))?$",
+    r"-v(\d{2,})-([A-Za-z0-9]+(?:-(?!v\d{2,}-)[A-Za-z0-9]+)*)(?:-(\d{1,9}))?$",
     re.I,
 )
 _PLATE_FILE_PART = re.compile(
-    r"([PT])(\d{2,})-([A-Za-z0-9]+(?:-(?![PT]\d{2,}-)[A-Za-z0-9]+)*)",
+    r"([PT])(\d{2,})([A-Za-z])?-([A-Za-z0-9]+(?:-(?![PT]\d{2,}[A-Za-z]?-)[A-Za-z0-9]+)*)",
+    re.I,
+)
+_VER_BOOK = re.compile(
+    r"-v\d{2,}-[A-Za-z0-9]+(?:-(?!v\d{2,}-)[A-Za-z0-9]+)*",
     re.I,
 )
 FILE_PAD = 2
+STEM_MAX = 180
 
 
 def _safe_token(s: str) -> str:
@@ -980,26 +985,56 @@ def _strip_lettered(stem: str) -> str:
     return s
 
 
-def _plate_file_part(slug: str) -> str:
-    m = re.match(r"^([pt])(\d+)_(.+)$", slug or "", re.I)
+def _collapse_runaway(stem: str) -> str:
+    """p09a-morning-v10-book-v01-book-v01-book → p09a-morning-v10-book"""
+    stem = stem or ""
+    m = _VER_BOOK.search(stem)
     if not m:
-        return _safe_token(slug)
-    return f"{m.group(1).upper()}{int(m.group(2)):0{FILE_PAD}d}-{_safe_token(m.group(3))}"
+        return stem
+    rest = stem[m.end() :]
+    if re.match(r"-v\d{2,}-", rest, re.I):
+        return stem[: m.end()]
+    return stem
+
+
+def _plate_file_part(slug: str) -> str:
+    raw = _collapse_runaway(_strip_lettered(Path(slug or "").stem))
+    m = re.match(r"^([pt])(\d+)([A-Za-z])?_(.+)$", raw, re.I)
+    if m:
+        var = (m.group(3) or "").upper()
+        return f"{m.group(1).upper()}{int(m.group(2)):0{FILE_PAD}d}{var}-{_safe_token(m.group(4))}"
+    m = re.match(r"^([pt])(\d+)([A-Za-z])?$", raw, re.I)
+    if m:
+        var = (m.group(3) or "").upper()
+        return f"{m.group(1).upper()}{int(m.group(2)):0{FILE_PAD}d}{var}"
+    parsed = _parse_new_stem(raw)
+    if parsed and parsed["slugs"]:
+        return "-".join(_plate_file_part(s) for s in parsed["slugs"][:2])
+    return _safe_token(raw)
 
 
 def _parse_new_stem(stem: str) -> dict[str, Any] | None:
-    stem = _strip_lettered(Path(stem or "").stem)
+    stem = _collapse_runaway(_strip_lettered(Path(stem or "").stem))
     m = _NEW_STEM_TAIL.search(stem)
     if not m:
         return None
     body = stem[: m.start()]
     parts = _PLATE_FILE_PART.findall(body)
-    if not parts:
-        return None
-    slugs = [
-        f"{let.lower()}{int(num):03d}_{rest.replace('-', '_')}"
-        for let, num, rest in parts
-    ]
+    slugs: list[str] = []
+    if parts:
+        for let, num, var, rest in parts:
+            letter = f"{let.lower()}{int(num):03d}{(var or '').lower()}"
+            slugs.append(f"{letter}_{rest.replace('-', '_')}")
+    else:
+        m2 = re.match(r"^([PT])(\d{2,})([A-Za-z])?$", body, re.I)
+        if m2:
+            slugs.append(
+                f"{m2.group(1).lower()}{int(m2.group(2)):03d}{(m2.group(3) or '').lower()}"
+            )
+        elif body:
+            slugs.append(body.replace("-", "_"))
+        else:
+            return None
     return {
         "slugs": slugs,
         "run": int(m.group(1)),
@@ -1046,11 +1081,23 @@ def _seed_from_stem(stem: str, slug: str | None = None) -> int | None:
 
 
 def _file_stem(book_id: str, slug: str, run: int) -> str:
-    found = _slugs_in_name(slug)
+    raw = _collapse_runaway(_strip_lettered(Path(slug or "").stem))
+    parsed = _parse_new_stem(raw)
+    if parsed and parsed["slugs"]:
+        raw = "_".join(parsed["slugs"][:2])
+        run = parsed["run"] or run
+    found = _slugs_in_name(raw)
     if not found:
-        found = [slug]
+        found = [raw]
     plates = "-".join(_plate_file_part(s) for s in found[:2])
-    return f"{plates}-v{int(run):02d}-{_safe_token(book_id)}"
+    book = _safe_token(book_id)
+    if plates.endswith("-" + book) or re.search(r"-v\d{2,}-", plates, re.I):
+        plates = _collapse_runaway(f"{plates}-v{int(run):02d}-{book}")
+        m = _NEW_STEM_TAIL.search(plates)
+        if m:
+            plates = plates[: m.start()]
+    out = f"{plates}-v{int(run):02d}-{book}"
+    return out[:STEM_MAX]
 
 
 def _version_label(run: int | None) -> str:
@@ -1141,16 +1188,24 @@ def normalize_plate_filenames(book_root: Path, book_id: str) -> list[tuple[Path,
     renamed: list[tuple[Path, Path]] = []
     lettered = book_root / "lettered"
     for p in pending:
-        found = _slugs_in_name(p.name)
-        slug = "_".join(found) if found else _plate_slug(p.name)
-        ver = _run_from_stem(p.stem, book_id) or 1
+        collapsed = _collapse_runaway(p.stem)
+        found = _slugs_in_name(collapsed)
+        slug = "_".join(found) if found else _plate_slug(collapsed)
+        ver = _run_from_stem(collapsed, book_id) or 1
         new_stem = _next_canonical_stem(book_id, slug, taken, run=ver)
+        if len(new_stem) > STEM_MAX:
+            new_stem = new_stem[:STEM_MAX]
         taken.add(new_stem)
         dest = p.with_name(new_stem + p.suffix)
-        if dest.exists():
+        try:
+            if dest.exists():
+                if dest.resolve() == p.resolve():
+                    continue
+                continue
+            old_stem = p.stem
+            p.rename(dest)
+        except OSError:
             continue
-        old_stem = p.stem
-        p.rename(dest)
         renamed.append((p, dest))
         if lettered.exists():
             for sib in (
@@ -1158,7 +1213,10 @@ def normalize_plate_filenames(book_root: Path, book_id: str) -> list[tuple[Path,
                 lettered / f"{old_stem}_lettered{p.suffix}",
             ):
                 if sib.exists():
-                    sib.rename(lettered / f"{new_stem}-lettered{p.suffix}")
+                    try:
+                        sib.rename(lettered / f"{new_stem}-lettered{p.suffix}")
+                    except OSError:
+                        pass
                     break
     return renamed
 

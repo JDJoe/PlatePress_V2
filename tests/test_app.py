@@ -255,9 +255,32 @@ def test_slug_keeps_extra_underscores():
     assert _is_canonical_stem("P08-wrong-place-v01-same-clouds", "same_clouds", "p008_wrong_place")
     assert _is_canonical_stem("P08-wrong-place-v01-same-clouds-2", "same_clouds", "p008_wrong_place")
     assert _is_canonical_stem("same_clouds_v01_p008_wrong_place", "same_clouds", "p008_wrong_place")
+    assert _file_stem("breakfastisinnocent", "p09A_morning", 10) == "P09A-morning-v10-breakfastisinnocent"
+    wrapped = "p09a-morning-v10-breakfastisinnocent-v01-breakfastisinnocent-v01-breakfastisinnocent"
+    assert _file_stem("breakfastisinnocent", wrapped, 1) == "P09A-morning-v10-breakfastisinnocent"
+    assert _file_stem("breakfastisinnocent", "P09A-morning-v10-breakfastisinnocent", 1) == (
+        "P09A-morning-v10-breakfastisinnocent"
+    )
     plates = [P("p08_wrong_place"), P("p09_other_side")]
     assert _resolve_slug("p008_wrong_place", plates) == "p08_wrong_place"
     assert _resolve_slug("p008_wrong", plates) == "p08_wrong_place"
+
+
+def test_normalize_collapses_runaway_stem(tmp_path):
+    from platepress.app import _collapse_runaway, normalize_plate_filenames
+
+    long = (
+        "p09a-morning-v10-breakfastisinnocent"
+        + "-v01-breakfastisinnocent" * 4
+    )
+    assert _collapse_runaway(long) == "p09a-morning-v10-breakfastisinnocent"
+    plates = tmp_path / "plates"
+    plates.mkdir()
+    (plates / f"{long}.png").write_bytes(b"x")
+    normalize_plate_filenames(tmp_path, "breakfastisinnocent")
+    names = [p.name for p in plates.iterdir()]
+    assert names == ["P09A-morning-v10-breakfastisinnocent.png"]
+    assert all(len(n) < 80 for n in names)
 
 
 def test_normalize_plate_filenames_uses_book_id(tmp_path):

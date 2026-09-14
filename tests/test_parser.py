@@ -38,6 +38,8 @@ def test_pad_slug_orders_p10_after_p1():
     assert pad_slug("p001_cargo") == "p001_cargo"
     assert same_slug("p1_cargo", "p001_cargo")
     assert pad_slug("p10_enough") > pad_slug("p1_cargo")
+    assert pad_slug("p09A_morning") == "p009A_morning"
+    assert pad_slug("p09A_") == "p009A"
 
 
 def test_preferred_wall_three_plates():

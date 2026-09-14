@@ -8,9 +8,10 @@ from dataclasses import dataclass, field
 from .defaults import LAYOUT_ONE, LAYOUT_SPLIT, METAPHORS, REF_CUTOUT, STYLE
 
 # Preferred: p1_cargo / t1_one. Also any identifier that is not a known character.
-_SLUG_PREF = re.compile(r"^p\d+_[A-Za-z0-9_]+$")
+_SLUG_PREF = re.compile(r"^p\d+[A-Za-z]?_[A-Za-z0-9_]*$")
 _SLUG_ANY = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
-_SLUG_NUM = re.compile(r"^([pt])(\d+)_(.+)$", re.I)
+# p01_wreck or p09A_morning (variant letter after the number)
+_SLUG_NUM = re.compile(r"^([pt])(\d+)([A-Za-z])?_(.*)$", re.I)
 _QUOTED = re.compile(r'^"([^"]+)"\s*(.*)$')
 _BRACE = re.compile(r"\{([A-Za-z][A-Za-z0-9_]*)\}")
 SLUG_PAD = 3
@@ -95,7 +96,10 @@ def pad_slug(slug: str, width: int = SLUG_PAD) -> str:
     m = _SLUG_NUM.match(slug or "")
     if not m:
         return slug
-    return f"{m.group(1).lower()}{int(m.group(2)):0{width}d}_{m.group(3)}"
+    letter = m.group(3) or ""
+    rest = m.group(4) or ""
+    core = f"{m.group(1).lower()}{int(m.group(2)):0{width}d}{letter}"
+    return f"{core}_{rest}" if rest else core
 
 
 def same_slug(a: str, b: str) -> bool:

@@ -70,7 +70,7 @@ MOTION: Body, boots, pack, debris, the beat.
 - Do not write “paint the plate.” Krea paints food. Factory Style says **Fill the frame**.
 - Captions: same slugs, in the **Captions** box. Check the **letter** column so Generate paints them on the plate. Untagged lines become a bottom box (`CAP_B`). `CAP_T` is the top box. The plate does not grow.
 - The default book is the demo. It cannot be deleted from the UI.
-- **Parse** before generate. Slug checkboxes stay as you left them. Click a prompt (or Copy) to copy the full assembled text Comfy will get.
+- **Parse** before generate. Slug checkboxes stay as you left them. Click a prompt (or Copy) to copy the full assembled text Comfy will get. A variant slug is `p09A_morning` (letter after the number).
 - Header checkboxes: generate-select, Text, Image, letter.
 - **Generate selected** uses the checked rows and always queues a new version. It Parses first. Skip only applies to Generate missing.
 - Assembler: **ink, layout line, closer (if any), Book wall**. No KEEP line is added.
