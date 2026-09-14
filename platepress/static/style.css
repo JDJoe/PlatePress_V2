@@ -208,6 +208,16 @@ th input[type="checkbox"] { margin-right: 0.25rem; }
   width: 100%;
 }
 .thumbs figure { margin: 0; border: 1px solid var(--line); padding: 0.4rem; }
+.thumbs .pick,
+.version-block h4 .pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 0 0.3rem;
+}
+.version-block h4 .pick { margin-left: 0.75rem; }
 .thumbs img { width: 100%; display: block; background: #000; cursor: zoom-in; }
 #lightbox {
   display: none;
