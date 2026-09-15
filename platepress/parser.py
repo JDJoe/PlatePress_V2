@@ -234,15 +234,19 @@ def parse_character_decls(body: str, character_names: list[str]) -> list[tuple[i
     return sorted(slots.items())
 
 
+_SLOT_IS_NAME = re.compile(
+    r"(?i)\b(?:CHARACTER|PILOT|CHAR)(\d+)\s+(?:is|=)\s+([A-Za-z][A-Za-z0-9_]*)"
+)
+
+
 def _writer_aliases(body: str) -> set[str]:
     """Names after CHAR1 is Celine — writer text, not a Cast token to expand."""
-    return {
-        m.group(1)
-        for m in re.finditer(
-            r"(?i)\b(?:CHARACTER|PILOT|CHAR)\d+\s+(?:is|=)\s+([A-Za-z][A-Za-z0-9_]*)",
-            body or "",
-        )
-    }
+    return {m.group(2) for m in _SLOT_IS_NAME.finditer(body or "")}
+
+
+def _slot_writer_names(body: str) -> dict[int, str]:
+    """CHAR1 is Celine / PILOT2 is Vex → {1: Celine, 2: Vex}."""
+    return {int(m.group(1)): m.group(2) for m in _SLOT_IS_NAME.finditer(body or "")}
 
 
 def expand_named_tokens(
@@ -469,9 +473,11 @@ class LetterBeat:
 def parse_caption_lettering(
     caption: str,
     characters: list[Character] | None = None,
+    wall: str = "",
 ) -> tuple[list[LetterBeat], str]:
     """Caption wall → model beats. Untagged narrator lines become a bottom box (CAP_B)."""
     characters = characters or []
+    aliases = _slot_writer_names(wall)
     beats: list[LetterBeat] = []
     bar: list[str] = []
     for raw in (caption or "").splitlines():
@@ -493,20 +499,27 @@ def parse_caption_lettering(
         slot = 0
         sm = _SPEAKER_PREFIX.match(rest)
         if sm and tag not in {"CAP_B", "CAP_T"}:
-            maybe = _cast_slot_name(sm.group(1), characters)
-            if maybe or _SLOT_EXACT.match(sm.group(1) or ""):
-                speaker = maybe or sm.group(1)
-                rest = (sm.group(2) or "").strip()
-                mslot = _SLOT_EXACT.match(sm.group(1) or "")
-                if mslot:
-                    slot = int(mslot.group(1))
-                elif maybe:
-                    for i, c in enumerate(characters, start=1):
-                        if c.name.lower() == maybe.lower():
-                            slot = i
-                            break
+            token = (sm.group(1) or "").strip()
+            rest = (sm.group(2) or "").strip()
+            mslot = _SLOT_EXACT.match(token)
+            maybe = _cast_slot_name(token, characters)
+            if mslot:
+                slot = int(mslot.group(1))
+                speaker = aliases.get(slot) or (
+                    characters[slot - 1].name
+                    if 0 < slot <= len(characters)
+                    else token
+                )
+            elif maybe:
+                speaker = maybe
+                for i, c in enumerate(characters, start=1):
+                    if c.name.lower() == maybe.lower():
+                        slot = i
+                        speaker = aliases.get(i) or maybe
+                        break
+            else:
+                speaker = token
         rest = _expand_cast_in_lettering(rest, characters)
-        speaker = _expand_cast_in_lettering(speaker, characters)
         part2 = ""
         if tag == "NS2":
             parts = _ns2_parts(rest)
@@ -533,19 +546,30 @@ def render_lettering(beats: list[LetterBeat]) -> str:
     for b in beats:
         shape = LETTER_SHAPES.get(b.tag) or LETTER_SHAPES["NS"]
         q1 = _quote_lettering(b.text)
+        who = (b.speaker or "").strip()
         if b.tag == "NS2" and b.part2:
             q2 = _quote_lettering(b.part2)
+            if who:
+                clause = (
+                    f"Draw {shape}. Hand-lettered ink inside, {who} stays exactly: \"{q1}\". "
+                    f"Second balloon exactly: \"{q2}\"."
+                )
+            else:
+                clause = (
+                    f"Draw {shape}. First balloon exactly: \"{q1}\". "
+                    f"Second balloon exactly: \"{q2}\"."
+                )
+        elif who and b.tag not in {"CAP_B", "CAP_T"}:
             clause = (
-                f"Draw {shape}. First balloon exactly: \"{q1}\". "
-                f"Second balloon exactly: \"{q2}\"."
+                f"Draw {shape}. Hand-lettered ink inside, {who} stays exactly: \"{q1}\"."
             )
         else:
             clause = f"Draw {shape}. Hand-lettered ink inside, exactly: \"{q1}\"."
-        if b.speaker and b.tag not in {"CAP_B", "CAP_T"}:
+        if who and b.tag not in {"CAP_B", "CAP_T"}:
             if b.tag == "OFFP":
-                clause += f" The voice is {b.speaker}, off-panel."
+                clause += f" The voice is {who}, off-panel."
             else:
-                clause += f" The tail points at {b.speaker}."
+                clause += f" The tail points at {who}."
         if b.cell in LETTER_CELLS and b.tag not in {"CAP_B", "CAP_T"}:
             clause += f" Place it in the {LETTER_CELLS[b.cell]}."
         out.append(clause)
@@ -960,7 +984,7 @@ def parse_book(
             pw.append(f"{slug}: two-shot — faces fuse")
         metaphor = detect_metaphor(scene)
         caption = caption_for(slug, caps)
-        beats, caption_bar = parse_caption_lettering(caption, characters)
+        beats, caption_bar = parse_caption_lettering(caption, characters, body)
         lettering_prompt = render_lettering(beats)
         n_pic = n_pictures_for.get(slug, 0) if use_image else 0
         plate_cutout = any(

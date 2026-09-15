@@ -899,6 +899,37 @@ NS_1: PILOT1: Then why the guard?
     assert beats[1].text == "Then why the guard?"
 
 
+def test_ns_any_speaker_stays_out_of_the_quote():
+    beats, _ = parse_caption_lettering("NS:Vex:Oh. There you are.", CAST)
+    assert len(beats) == 1
+    assert beats[0].speaker == "Vex"
+    assert beats[0].text == "Oh. There you are."
+    prompt = render_lettering(beats)
+    assert "Vex stays exactly: \"Oh. There you are.\"" in prompt
+    assert "exactly: \"Vex:" not in prompt
+    assert "Vex:Oh" not in prompt
+
+
+def test_ns_pilot_speaker_uses_wall_name_not_lock():
+    wall = """
+p01_bar
+PILOT1 is Celine
+PILOT2 is Vex
+a tavern, brass lamp
+"""
+    caps = """
+p01_bar
+NS: PILOT2: Oh. There you are.
+"""
+    r = parse_book(wall, caps, CAST)
+    p = r.plates[0]
+    assert "Oh. There you are." in p.lettering_prompt
+    assert "Vex stays exactly: \"Oh. There you are.\"" in p.lettering_prompt
+    assert "PILOT2 stays" not in p.lettering_prompt
+    assert ANDROID not in p.lettering_prompt
+    assert "Vex:Oh" not in p.lettering_prompt
+
+
 def test_speech_speaker_keeps_cast_slot():
     beats, _ = parse_caption_lettering(
         "NS: PILOT2: We should sell them.\nNSV: PILOT1: Then why the guard?\nNS: AUGUR: Again.",

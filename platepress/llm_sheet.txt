@@ -41,7 +41,7 @@ MOTION: body, boots, pack, debris, the beat.
 CAPTIONS:
 - Same slugs as PROMPTS.
 - Untagged lines: two or three short narrator lines. They become a bottom caption box on the plate when the letter column is on. Do not repeat the prompt. The caption is the moral; the prompt is the camera.
-- In-picture lettering: one tag per line. Optional speaker after the tag.
+- In-picture lettering: one tag per line. Optional speaker after the tag: NS: Vex: Oh. There you are. The name is the speaker, not balloon ink. NS: PILOT2: … uses the name from PILOT2 is Vex on the shot wall, not the lock.
   NS_6: PILOT2 suggested selling them.
   NS_2: PILOT1: Then why the armed guard?
   NS2: Speech in… | …two parts

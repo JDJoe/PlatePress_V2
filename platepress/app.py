@@ -32,6 +32,7 @@ from .parser import (
     locks_for_scene,
     pad_slug,
     parse_book,
+    parse_wall,
     same_slug,
 )
 from .store import (
@@ -1560,6 +1561,8 @@ def post_letter(body: dict[str, Any]) -> dict[str, Any]:
     d = book_dir(s)
     parsed = _parse(book, s)
     chars = _chars(book)
+    names = [c.name for c in chars if c.name]
+    wall_by = {s: b for s, b in parse_wall(book.get("prompts_raw") or "", names)}
     by_slug = {p.slug: p for p in parsed.plates}
     only = body.get("slug")
     n = 0
@@ -1590,7 +1593,12 @@ def post_letter(body: dict[str, Any]) -> dict[str, Any]:
             continue
         beats = []
         for p in matched:
-            more, _bar = parse_caption_lettering(p.caption, chars)
+            wall = ""
+            for s, b in wall_by.items():
+                if same_slug(s, p.slug):
+                    wall = b
+                    break
+            more, _bar = parse_caption_lettering(p.caption, chars, wall)
             beats.extend(more)
         if not beats:
             skipped += 1
