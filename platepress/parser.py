@@ -551,7 +551,7 @@ def render_lettering(beats: list[LetterBeat]) -> str:
             q2 = _quote_lettering(b.part2)
             if who:
                 clause = (
-                    f"Draw {shape}. Hand-lettered ink inside, {who} stays exactly: \"{q1}\". "
+                    f"Draw {shape}. Hand-lettered ink inside, {who} says exactly: \"{q1}\". "
                     f"Second balloon exactly: \"{q2}\"."
                 )
             else:
@@ -561,7 +561,7 @@ def render_lettering(beats: list[LetterBeat]) -> str:
                 )
         elif who and b.tag not in {"CAP_B", "CAP_T"}:
             clause = (
-                f"Draw {shape}. Hand-lettered ink inside, {who} stays exactly: \"{q1}\"."
+                f"Draw {shape}. Hand-lettered ink inside, {who} says exactly: \"{q1}\"."
             )
         else:
             clause = f"Draw {shape}. Hand-lettered ink inside, exactly: \"{q1}\"."

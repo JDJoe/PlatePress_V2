@@ -905,7 +905,7 @@ def test_ns_any_speaker_stays_out_of_the_quote():
     assert beats[0].speaker == "Vex"
     assert beats[0].text == "Oh. There you are."
     prompt = render_lettering(beats)
-    assert "Vex stays exactly: \"Oh. There you are.\"" in prompt
+    assert "Vex says exactly: \"Oh. There you are.\"" in prompt
     assert "exactly: \"Vex:" not in prompt
     assert "Vex:Oh" not in prompt
 
@@ -924,7 +924,7 @@ NS: PILOT2: Oh. There you are.
     r = parse_book(wall, caps, CAST)
     p = r.plates[0]
     assert "Oh. There you are." in p.lettering_prompt
-    assert "Vex stays exactly: \"Oh. There you are.\"" in p.lettering_prompt
+    assert "Vex says exactly: \"Oh. There you are.\"" in p.lettering_prompt
     assert "PILOT2 stays" not in p.lettering_prompt
     assert ANDROID not in p.lettering_prompt
     assert "Vex:Oh" not in p.lettering_prompt

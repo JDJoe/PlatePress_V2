@@ -76,7 +76,7 @@ MOTION: Body, boots, pack, debris, the beat.
 - Assembler: **ink, layout line, closer (if any), Book wall**. No KEEP line is added.
 - Two-pane comic: one checked row uses the next slug as the right pane. Write a full shot on each slug.
 - Default: 2 random seeds per plate.
-- Caption tags (one per line). Speaker optional after the tag: `NS: Vex: Oh. There you are.` The name is who speaks (tail), not ink in the balloon.
+- Caption tags (one per line). Speaker optional after the tag: `NS: Vex: Oh. There you are.` The name is who speaks (tail), not ink in the balloon. Krea lettering line: `Hand-lettered ink inside, Vex says exactly: "Oh. There you are."`
   - Place the balloon in a cell: `NS_6: PILOT2 suggested selling them.` Grid, top to bottom:
     `1 2`
     `3 4`
